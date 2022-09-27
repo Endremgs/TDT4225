@@ -1,4 +1,9 @@
 import mysql.connector as mysql
+#from decouple import config
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class DbConnector:
@@ -15,13 +20,15 @@ class DbConnector:
     """
 
     def __init__(self,
-                 HOST="tdt4225-xx.idi.ntnu.no",
-                 DATABASE="DATABASE_NAME",
-                 USER="TEST_USER",
-                 PASSWORD="test123"):
+                 HOST="tdt4225-13.idi.ntnu.no",
+                 DATABASE="exercise2",
+                 USER="gruppe13",
+                 PASSWORD=os.getenv('PASSWORD')):
         # Connect to the database
         try:
-            self.db_connection = mysql.connect(host=HOST, database=DATABASE, user=USER, password=PASSWORD, port=3306)
+            print("password: " + os.getenv('PASSWORD'))
+            self.db_connection = mysql.connect(
+                host=HOST, database=DATABASE, user=USER, password=PASSWORD, port=3306)
         except Exception as e:
             print("ERROR: Failed to connect to db:", e)
 
@@ -41,4 +48,5 @@ class DbConnector:
         # close the DB connection
         self.db_connection.close()
         print("\n-----------------------------------------------")
-        print("Connection to %s is closed" % self.db_connection.get_server_info())
+        print("Connection to %s is closed" %
+              self.db_connection.get_server_info())
