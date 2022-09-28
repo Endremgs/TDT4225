@@ -49,36 +49,65 @@ class Process_data:
     # TODO - kun labeled users har aktiviteter. Kan være hensiktsmessig å sjekke
     # Todo - has_label feltet for brukeren i starten av funksjonen
     def retrieve_activities_for_labeled_user(self, user):
-        activities = []
-        with open(user["path"].replace("/Trajectory", "/labels.txt"), "r") as file:
-            for line in file.readlines()[1:]:
-                # info = line.split()
-                activities.append(line.split())
-        # print(activities)
-        return activities
+        if user["has_label"]:
+            activities = []
+            with open(user["path"].replace("/Trajectory", "/labels.txt"), "r") as file:
+                for line in file.readlines()[1:]:
+                    # info = line.split()
+                    activities.append(line.split())
+            # print(activities)
+            return activities
+        return False
 
-    def read_trajectory_of_activity(self, userID, filename):
-
+    def read_trajectory(self, userID, filename):
+        trajectory_list = []
         path = BASE_PATH+"/Data/"+userID+"/Trajectory/"+filename
         trajectories = pd.read_csv(path, header=None, skiprows=6).to_numpy()
-
-        trajectory_list = [{"lat": trajectory[0],
-                            "lon": trajectory[1],
-                            "alt": trajectory[3],
-                            "date": trajectory[5],
-                            "time": trajectory[6]}
-                           for trajectory in trajectories]
-        print(trajectory_list[0])
+        if len(trajectories) < 2500:
+            trajectory_list = [{"lat": trajectory[0],
+                                "lon": trajectory[1],
+                                "alt": trajectory[3],
+                                "date": trajectory[5],
+                                "time": trajectory[6]}
+                            for trajectory in trajectories]
+        #print(trajectory_list[0])
         return trajectory_list
 
+    def find_matching_trajectory(self, label, user, userID):
+        startTime = label[0] + " " + label[1]
+        endTime = label[2] + " " + label[3]
+        startTime = self.convert_timeformat(startTime)
+        endTime = self.convert_timeformat(endTime)
+        for fileName in user["files"]:
+            matchingStartTime = False
+            matchingEndTime = False
+            #Check each trackpoint and check if they are a match
+            for trackpoint in self.read_trajectory(userID, fileName):
+                trackPointTime = trackpoint["date"] + " " + trackpoint["time"]
+                if startTime == trackPointTime:
+                    matchingStartTime = True
+                if (endTime == trackPointTime) and startTime:
+                    matchingEndTime = True
+
+                if matchingStartTime and matchingEndTime:
+                    print("Found match on activity '" + label[4] + "' With file '" + fileName + "'")
+                    return fileName
+
+    def convert_timeformat(self, date):
+        return date.replace("/", "-")
+        
 
 def main():
     process_data = Process_data()
-    # process_data.read_labeled_users()
-    # process_data.read_users()
-    # process_data.retrieve_activities_for_labeled_user(
-    #   process_data.users["175"])
-    process_data.read_trajectory("175", "20071019052315.plt")
+    process_data.read_labeled_users()
+    process_data.read_users()
+    print(process_data.users_with_labels)
+    for userID in process_data.users_with_labels:
+        print("Checking activities for user " + userID + "...")
+        for item in process_data.retrieve_activities_for_labeled_user(process_data.users[userID]):
+            process_data.find_matching_trajectory(item, process_data.users[userID], userID)
+    print("FINISHED")
+    #process_data.read_trajectory("175", "20071019052315.plt")
 
 
 main()
