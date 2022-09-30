@@ -50,3 +50,24 @@ class DbConnector:
         print("\n-----------------------------------------------")
         print("Connection to %s is closed" %
               self.db_connection.get_server_info())
+
+    def insert_user(self, user):
+        query = "INSERT INTO user (id, has_labels) VALUES ('%s', '%s')"
+        self.cursor.execute(query % (user[id], user["has_labels"]))
+
+    def insert_activity(self, activity):
+        if ('transporation_mode' in activity.keys()):
+            query = "INSERT INTO activity (user_id, transportation_mode, start_date_time, end_date_time) VALUES ('%s', '%s', '%s', '%s')"
+            self.cursor.execute(query % (
+                activity["user_id"], activity["transportation_mode"], activity["start_date_time"], activity["end_date_time"]))
+        else:
+            query = "INSERT INTO activity (user_id, start_date_time, end_date_time) VALUES ('%s', '%s', '%s')"
+            self.cursor.execute(query % (
+                activity["user_id"], activity["start_date_time"], activity["end_date_time"]))
+
+    def insert_trackpoint(self, trackpoint):
+        query = "INSERT INTO trackpoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
+        trackpoint_date_days = float(trackpoint["date"][-2])
+        trackpoint_date_time = trackpoint["date"] + " " + trackpoint["time"]
+        self.cursor.execute(query % (trackpoint["activity_id"], trackpoint["lat"],
+                            trackpoint["lon"], trackpoint_date_days, trackpoint_date_time))

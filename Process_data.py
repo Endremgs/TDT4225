@@ -1,6 +1,9 @@
+import time
 import os
 import pandas as pd
 import numpy as np
+
+
 BASE_PATH = "./dataset"
 
 
@@ -11,27 +14,31 @@ class Process_data:
         self.activities = []
         self.trackpoints = []
 
+    # Read all users (labeled and unlabeled) and save to self.users
     def read_users(self):
+        self.read_labeled_users()
         path = BASE_PATH + "/Data"
         users = {}
         userIDs = []
         for file in os.listdir(path):
             userIDs.append(os.path.join(path, file)[-3:])
-        # print(userIDs)
         for userID in userIDs:
-            # print(userID)
             users[userID] = {}
             for root, dirs, files in os.walk(path+"/"+userID):
                 if "/Trajectory" in root:
-                    filesInfo = {
+                    userInfo = {
+                        "id": userID,
                         "path": root,
                         "files": files,
                         "has_label": self.user_has_label(userID)
                     }
-                    users[userID].update(filesInfo)
+                    users[userID].update(userInfo)
+                    # Query for inserting user into database
+
         self.users = users
         return users
 
+    # Read all labeled userIDs and save to self.users_with_labels
     def read_labeled_users(self):
         path = BASE_PATH + "/labeled_ids.txt"
         labeled_users = pd.read_csv(path, header=None).to_numpy()
@@ -41,73 +48,152 @@ class Process_data:
         self.users_with_labels = formatted_labeled_users
         return formatted_labeled_users
 
-    # Todo - gjøre direkte i kode kanskje?
+    # Check if user with userID has labels.
     def user_has_label(self, userID):
+        if len(self.users_with_labels) == 0:
+            self.read_labeled_users()
         return userID in self.users_with_labels
 
-    # def read_activities(self):
-    # TODO - kun labeled users har aktiviteter. Kan være hensiktsmessig å sjekke
-    # Todo - has_label feltet for brukeren i starten av funksjonen
-    def retrieve_activities_for_labeled_user(self, user):
+    # Adds all activities of unlabeled users to self.activities
+    # For each plt file in user trajectory:
+    #   Create empty activity
+    #   Connect all trackpoints within the plt file to the activity
+    def retrieve_activities_for_unlabeled_user(self, user):
+        if not user["has_label"]:
+            activities = []
+            filenames = os.listdir(user["path"])
+            for filename in filenames:
+                # Insert activity without transportation_mode
+                trackpoint_list = self.read_trajectory(user["path"], filename)
+                activity = {
+                    "user_id": user["id"],
+                    # "transportation_mode": "",
+                    "start_date_time": trackpoint_list[0]["date"] + " " + trackpoint_list[0]["time"],
+                    "end_date_time": trackpoint_list[-1]["date"] + " " + trackpoint_list[-1]["time"]}
+                activities.append(activity)
+                # Insert each trackpoint and connect to activity
+            return activities
+        else:
+            raise Exception("User possibly has labels")
+
+    # Finds all activities that are labeled for a given user
+    #
+    def retrieve_activities_with_labels(self, user):
         if user["has_label"]:
             activities = []
             with open(user["path"].replace("/Trajectory", "/labels.txt"), "r") as file:
                 for line in file.readlines()[1:]:
-                    # info = line.split()
-                    activities.append(line.split())
-            # print(activities)
+                    label = line.split()
+                    # print(user)
+                    activity = self.find_matching_trajectory(label, user)
+                    # activities.append(activity)
+                    # TODO Pop plt file from user
             return activities
-        return False
+        else:
+            raise Exception("User does not have label")
 
-    def read_trajectory(self, userID, filename):
-        trajectory_list = []
-        path = BASE_PATH+"/Data/"+userID+"/Trajectory/"+filename
+    def read_trajectory(self, user_path, filename):
+        trackpoint_list = []
+        path = user_path+"/"+filename
         trajectories = pd.read_csv(path, header=None, skiprows=6).to_numpy()
         if len(trajectories) < 2500:
-            trajectory_list = [{"lat": trajectory[0],
+            trackpoint_list = [{"lat": trajectory[0],
                                 "lon": trajectory[1],
                                 "alt": trajectory[3],
                                 "date": trajectory[5],
                                 "time": trajectory[6]}
-                            for trajectory in trajectories]
-        #print(trajectory_list[0])
-        return trajectory_list
+                               for trajectory in trajectories]
+        return trackpoint_list
 
-    def find_matching_trajectory(self, label, user, userID):
-        startTime = label[0] + " " + label[1]
-        endTime = label[2] + " " + label[3]
-        startTime = self.convert_timeformat(startTime)
-        endTime = self.convert_timeformat(endTime)
-        for fileName in user["files"]:
-            matchingStartTime = False
-            matchingEndTime = False
-            #Check each trackpoint and check if they are a match
-            for trackpoint in self.read_trajectory(userID, fileName):
-                trackPointTime = trackpoint["date"] + " " + trackpoint["time"]
-                if startTime == trackPointTime:
-                    matchingStartTime = True
-                if (endTime == trackPointTime) and startTime:
-                    matchingEndTime = True
+    # Take in a label
+    # Then return the activity(plt file) with a matching start and end time
+    def find_matching_trajectory(self, label, user):
+        label_start_time = label[0] + " " + label[1]
+        label_end_time = label[2] + " " + label[3]
+        label_start_time = self.convert_timeformat(label_start_time)
+        label_end_time = self.convert_timeformat(label_end_time)
+        # print(user)
+        for index, fileName in enumerate(user["files"]):
+            matching_start_time = False
+            matching_end_time = False
+            # Check each trackpoint and check if they are a match
+            trackpoint_list = []
 
-                if matchingStartTime and matchingEndTime:
-                    print("Found match on activity '" + label[4] + "' With file '" + fileName + "'")
-                    return fileName
+            for trackpoint in self.read_trajectory(user["path"], fileName):
+                trackpoint_list.append(trackpoint)
+                track_point_time = trackpoint["date"] + \
+                    " " + trackpoint["time"]
+
+                # Case to skip matching for optimization
+                if not matching_start_time and time.strptime(track_point_time, "%Y-%m-%d %H:%M:%S") > time.strptime(label_start_time, "%Y-%m-%d %H:%M:%S"):
+                    break
+                else:
+                    if matching_start_time:
+                        # Appending all trackpoints after start time
+                        trackpoint_list.append(trackpoint)
+
+                    if label_start_time == track_point_time:
+                        matching_start_time = True
+                        # Appending first trackpoint
+                        trackpoint_list.append(trackpoint)
+
+                    if (label_end_time == track_point_time) and label_start_time:
+                        matching_end_time = True
+
+                    if matching_start_time and matching_end_time:
+                        print("Found match on activity '" +
+                              label[4] + "' With file '" + fileName + "'")
+                        user["files"].pop(index)
+                        # Insert activity with transportation_mode, retrieving ID of activity
+
+                        # for each trackpoint in trackpoint_list: insert trackpoint and connect to activity
+                        print(trackpoint_list)
+                        break
+                        # return fileName
 
     def convert_timeformat(self, date):
         return date.replace("/", "-")
-        
+
+    # Iterate through all labels of the user
+    # Then connect each unmatched activity with a empty activity
+    def process_labeled_users(self):
+        for user_id in self.users_with_labels:
+            print("Checking activities for user " + user_id + "...")
+            for item in self.retrieve_activity_labels(self.users[user_id]):
+                print("bob")
+
 
 def main():
     process_data = Process_data()
     process_data.read_labeled_users()
     process_data.read_users()
-    print(process_data.users_with_labels)
+    # print(process_data.users_with_labels)
+    # process_data.retrieve_activities_for_unlabeled_user(
+    #   process_data.users["001"])
+    # length = 0
+    # for userID in process_data.read_labeled_users():
+    #     # print(process_data.users[userID])
+
+    #     activities = process_data.retrieve_activity_labels(
+    #         process_data.users[userID])
+    #     length += len(activities)
+
+    #     # print(activities)
+    # # print(length)
+
+    # file_count = 0
+    # for userID in process_data.read_labeled_users():
+    #     file_count += len(os.listdir('dataset/Data/'+userID+'/Trajectory'))
+
+    # print(file_count)
+
     for userID in process_data.users_with_labels:
         print("Checking activities for user " + userID + "...")
-        for item in process_data.retrieve_activities_for_labeled_user(process_data.users[userID]):
-            process_data.find_matching_trajectory(item, process_data.users[userID], userID)
+        for item in process_data.retrieve_activities_with_labels(process_data.users[userID]):
+            process_data.find_matching_trajectory(
+                item, process_data.users[userID])
     print("FINISHED")
-    #process_data.read_trajectory("175", "20071019052315.plt")
+    process_data.read_trajectory("175", "20071019052315.plt")
 
 
 main()

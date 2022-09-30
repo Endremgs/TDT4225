@@ -1,6 +1,6 @@
 TABLES = {}
 TABLES['user'] = (
-    "CREATE TABLE `User` ("
+    "CREATE TABLE `user` ("
     "  `id` VARCHAR(5) NOT NULL AUTO_INCREMENT,"
     "  `has_labels` BOOLEAN,"
     "  PRIMARY KEY (`id`)"
