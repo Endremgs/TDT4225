@@ -8,11 +8,12 @@ BASE_PATH = "./dataset"
 
 
 class Process_data:
-    def __init__(self):
+    def __init__(self, db_connector):
         self.users = {}
         self.users_with_labels = []
         self.activities = []
         self.trackpoints = []
+        self.db_connector = db_connector
 
     # Read all users (labeled and unlabeled) and save to self.users
     def read_users(self):
@@ -34,7 +35,7 @@ class Process_data:
                     }
                     users[userID].update(userInfo)
                     # Query for inserting user into database
-
+                    # self.db_connector.insert_user(userInfo)
         self.users = users
         return users
 
@@ -60,7 +61,7 @@ class Process_data:
     #   Connect all trackpoints within the plt file to the activity
     def retrieve_activities_for_unlabeled_user(self, user):
         if not user["has_label"]:
-            activities = []
+            #activities = []
             filenames = os.listdir(user["path"])
             for filename in filenames:
                 # Insert activity without transportation_mode
@@ -70,25 +71,43 @@ class Process_data:
                     # "transportation_mode": "",
                     "start_date_time": trackpoint_list[0]["date"] + " " + trackpoint_list[0]["time"],
                     "end_date_time": trackpoint_list[-1]["date"] + " " + trackpoint_list[-1]["time"]}
-                activities.append(activity)
+                # activities.append(activity)
+
+                # Insert activity
+                self.db_connector.insert_activity(activity)
+                activity_id = self.db_connector.get_last_inserted_id()
+
                 # Insert each trackpoint and connect to activity
-            return activities
+                for trackpoint in trackpoint_list:
+                    trackpoint["activity_id"] = activity_id
+                    self.db_connector.insert_trackpoint(trackpoint)
+
+            # return activities
         else:
             raise Exception("User possibly has labels")
 
     # Finds all activities that are labeled for a given user
-    #
+        #
+
     def retrieve_activities_with_labels(self, user):
         if user["has_label"]:
-            activities = []
+            #activities = []
             with open(user["path"].replace("/Trajectory", "/labels.txt"), "r") as file:
                 for line in file.readlines()[1:]:
                     label = line.split()
                     # print(user)
-                    activity = self.find_matching_trajectory(label, user)
+                    self.find_matching_trajectory(label, user)
                     # activities.append(activity)
-                    # TODO Pop plt file from user
-            return activities
+
+            # Create activitites for remainding plt files that were not matched to label
+            for filename in user["files"]:
+                trackpoint_list = self.read_trajectory(user["path"], filename)
+                activity = {
+                    "user_id": user["id"],
+                    "start_date_time": trackpoint_list[0]["date"] + " " + trackpoint_list[0]["time"],
+                    "end_date_time": trackpoint_list[-1]["date"] + " " + trackpoint_list[-1]["time"]}
+                self.db_connector.insert_activity(activity)
+            # return activities
         else:
             raise Exception("User does not have label")
 
@@ -108,10 +127,9 @@ class Process_data:
     # Take in a label
     # Then return the activity(plt file) with a matching start and end time
     def find_matching_trajectory(self, label, user):
-        label_start_time = label[0] + " " + label[1]
-        label_end_time = label[2] + " " + label[3]
-        label_start_time = self.convert_timeformat(label_start_time)
-        label_end_time = self.convert_timeformat(label_end_time)
+        label_start_time = self.convert_timeformat(label[0] + " " + label[1])
+        label_end_time = self.convert_timeformat(label[2] + " " + label[3])
+
         # print(user)
         for index, fileName in enumerate(user["files"]):
             matching_start_time = False
@@ -120,7 +138,7 @@ class Process_data:
             trackpoint_list = []
 
             for trackpoint in self.read_trajectory(user["path"], fileName):
-                trackpoint_list.append(trackpoint)
+
                 track_point_time = trackpoint["date"] + \
                     " " + trackpoint["time"]
 
@@ -136,20 +154,32 @@ class Process_data:
                         matching_start_time = True
                         # Appending first trackpoint
                         trackpoint_list.append(trackpoint)
+                    # Else to avoid extra checks
+                    else:
+                        # Todo - could these two if statements be combined as they are both checking the same thing?
+                        if (label_end_time == track_point_time) and matching_start_time:
+                            matching_end_time = True
 
-                    if (label_end_time == track_point_time) and label_start_time:
-                        matching_end_time = True
+                        if matching_start_time and matching_end_time:
+                            print("Found match on activity '" +
+                                  label[4] + "' With file '" + fileName + "'")
+                            user["files"].pop(index)
+                            # Insert activity with transportation_mode, retrieving ID of activity
 
-                    if matching_start_time and matching_end_time:
-                        print("Found match on activity '" +
-                              label[4] + "' With file '" + fileName + "'")
-                        user["files"].pop(index)
-                        # Insert activity with transportation_mode, retrieving ID of activity
+                            self.db_connector.insert_activity({
+                                "user_id": user["id"],
+                                "transportation_mode": label[4],
+                                "start_date_time": trackpoint_list[0]["date"] + " " + trackpoint_list[0]["time"],
+                                "end_date_time": trackpoint_list[-1]["date"] + " " + trackpoint_list[-1]["time"]})
 
-                        # for each trackpoint in trackpoint_list: insert trackpoint and connect to activity
-                        print(trackpoint_list)
-                        break
-                        # return fileName
+                            activity_id = self.db_connector.get_last_inserted_id()
+                            # for each trackpoint in trackpoint_list: insert trackpoint and connect to activity
+                            for trackpoint in trackpoint_list:
+                                trackpoint["activity_id"] = activity_id
+                                self.db_connector.insert_trackpoint(trackpoint)
+                            # print(trackpoint_list)
+                            break
+                            # return fileName
 
     def convert_timeformat(self, date):
         return date.replace("/", "-")
@@ -162,38 +192,54 @@ class Process_data:
             for item in self.retrieve_activity_labels(self.users[user_id]):
                 print("bob")
 
+    def process(self):
+        self.read_users()
+        user_list = []
 
-def main():
-    process_data = Process_data()
-    process_data.read_labeled_users()
-    process_data.read_users()
-    # print(process_data.users_with_labels)
-    # process_data.retrieve_activities_for_unlabeled_user(
-    #   process_data.users["001"])
-    # length = 0
-    # for userID in process_data.read_labeled_users():
-    #     # print(process_data.users[userID])
+        for user in self.users.values():
+            print(user)
+            if (user.get("id")):
+                user_list.append((user["id"], int(user["has_label"])))
+        self.db_connector.batch_insert_users(user_list)
 
-    #     activities = process_data.retrieve_activity_labels(
-    #         process_data.users[userID])
-    #     length += len(activities)
+        for user in self.users.values():
+            print(user)
+            if user["has_label"]:
+                self.retrieve_activities_with_labels(user)
+            else:
+                self.retrieve_activities_for_unlabeled_user(user)
 
-    #     # print(activities)
-    # # print(length)
+# def main():
+#     process_data = Process_data()
+#     process_data.read_labeled_users()
+#     process_data.read_users()
+#     # print(process_data.users_with_labels)
+#     # process_data.retrieve_activities_for_unlabeled_user(
+#     #   process_data.users["001"])
+#     # length = 0
+#     # for userID in process_data.read_labeled_users():
+#     #     # print(process_data.users[userID])
 
-    # file_count = 0
-    # for userID in process_data.read_labeled_users():
-    #     file_count += len(os.listdir('dataset/Data/'+userID+'/Trajectory'))
+#     #     activities = process_data.retrieve_activity_labels(
+#     #         process_data.users[userID])
+#     #     length += len(activities)
 
-    # print(file_count)
+#     #     # print(activities)
+#     # # print(length)
 
-    for userID in process_data.users_with_labels:
-        print("Checking activities for user " + userID + "...")
-        for item in process_data.retrieve_activities_with_labels(process_data.users[userID]):
-            process_data.find_matching_trajectory(
-                item, process_data.users[userID])
-    print("FINISHED")
-    process_data.read_trajectory("175", "20071019052315.plt")
+#     # file_count = 0
+#     # for userID in process_data.read_labeled_users():
+#     #     file_count += len(os.listdir('dataset/Data/'+userID+'/Trajectory'))
+
+#     # print(file_count)
+
+#     for userID in process_data.users_with_labels:
+#         print("Checking activities for user " + userID + "...")
+#         for item in process_data.retrieve_activities_with_labels(process_data.users[userID]):
+#             process_data.find_matching_trajectory(
+#                 item, process_data.users[userID])
+#     print("FINISHED")
+#     process_data.read_trajectory("175", "20071019052315.plt")
 
 
-main()
+# main()

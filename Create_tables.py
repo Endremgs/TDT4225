@@ -1,13 +1,13 @@
 TABLES = {}
 TABLES['user'] = (
-    "CREATE TABLE `user` ("
+    "CREATE TABLE IF NOT EXISTS `user` ("
     "  `id` VARCHAR(5) NOT NULL AUTO_INCREMENT,"
     "  `has_labels` BOOLEAN,"
     "  PRIMARY KEY (`id`)"
     ") ENGINE=InnoDB"
 )
 TABLES['activity'] = (
-    "CREATE TABLE `activity` ("
+    "CREATE TABLE IF NOT EXISTS `activity` ("
     "  `id` int NOT NULL AUTO_INCREMENT,"
     "  `user_id` VARCHAR(5),"
     "  `transportation_mode` VARCHAR(15),"
@@ -19,7 +19,7 @@ TABLES['activity'] = (
     ") ENGINE=InnoDB"
 )
 TABLES['trackpoint'] = (
-    "CREATE TABLE `trackpoint` ("
+    "CREATE TABLE IF NOT EXISTS `trackpoint` ("
     "  `id` int NOT NULL AUTO_INCREMENT,"
     "  `lat` DOUBLE,"
     "  `lon` DOUBLE,"
