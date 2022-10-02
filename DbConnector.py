@@ -2,6 +2,7 @@ import mysql.connector as mysql
 # from decouple import config
 import os
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
@@ -20,18 +21,22 @@ class DbConnector:
     """
 
     def __init__(self,
-                 HOST="tdt4225-13.idi.ntnu.no",
+                 # HOST="tdt4225-13.idi.ntnu.no",
+                 HOST="127.0.0.1",
+                 PORT=3306,
                  DATABASE="exercise2",
-                 USER="gruppe13",
+                 # USER="gruppe13",
+                 USER="root",
                  PASSWORD=os.getenv('PASSWORD')):
         # Connect to the database
         try:
             print("password: " + os.getenv('PASSWORD'))
             self.db_connection = mysql.connect(
-                host=HOST, database=DATABASE, user=USER, password=PASSWORD, port=3306)
+                host=HOST, database=DATABASE, user=USER, password=PASSWORD, port=PORT)
         except Exception as e:
             print("ERROR: Failed to connect to db:", e)
 
+        self.start_time = time.time()
         # Get the db cursor
         self.cursor = self.db_connection.cursor()
 
@@ -94,14 +99,31 @@ class DbConnector:
         query = "INSERT INTO user (id, has_labels) VALUES (%s, %s)"
         self.cursor.executemany(query, user_list)
         self.db_connection.commit()
-        print("finished")
+        print("finished insert!")
 
     def batch_insert_trackpoints(self, trackpoint_list):
-        print("inserting trackpoint_list...")
-        query = "INSERT INTO trackpoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s, %s, %s, %s, %s, %s)"
-        self.cursor.executemany(query, user_list)
-        self.db_connection.commit()
-        print("finished")
+        try:
+            start = time.time()
+            print("inserting trackpoint_list with length:")
+            print(len(trackpoint_list))
+            query = "INSERT INTO trackpoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s, %s, %s, %s, %s, %s)"
+            self.cursor.executemany(query, trackpoint_list)
+            end = time.time()
+            self.db_connection.commit()
+            print("finished insert after: " + str(end-start))
+            print("Total time elapsed: " + str(end - self.start_time))
+        except Exception as e:
+            print(trackpoint_list)
+            print(e)
 
     def get_last_inserted_id(self):
         return self.cursor.lastrowid
+
+
+# old trackpoint structure as a dictionary:
+# trackpoint_list = [{"lat": trajectory[0],
+#                     "lon": trajectory[1],
+#                     "alt": trajectory[3],
+#                     "date": trajectory[5],
+#                     "time": trajectory[6]}
+#                    for trajectory in trajectories]
