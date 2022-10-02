@@ -72,7 +72,7 @@ class DbConnector:
         print("inserted user with ID: " + str(user["id"]))
 
     def insert_activity(self, activity):
-        if ('transporation_mode' in activity.keys()):
+        if 'transportation_mode' in activity.keys():
             query = "INSERT INTO activity (user_id, transportation_mode, start_date_time, end_date_time) VALUES ('%s', '%s', '%s', '%s')"
             self.cursor.execute(query % (
                 activity["user_id"], activity["transportation_mode"], activity["start_date_time"], activity["end_date_time"]))
@@ -118,7 +118,6 @@ class DbConnector:
 
     def get_last_inserted_id(self):
         return self.cursor.lastrowid
-
 
 # old trackpoint structure as a dictionary:
 # trackpoint_list = [{"lat": trajectory[0],

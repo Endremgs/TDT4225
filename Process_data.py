@@ -102,13 +102,10 @@ class Process_data:
 
     def retrieve_activities_with_labels(self, user):
         if user["has_label"]:
-            # activities = []
             with open(user["path"].replace("/Trajectory", "/labels.txt"), "r") as file:
                 for line in file.readlines()[1:]:
                     label = line.split()
-                    # print(user)
                     self.find_matching_trajectory(label, user)
-                    # activities.append(activity)
 
             # Create activitites for remainding plt files that were not matched to label
             for filename in user["files"]:
@@ -157,65 +154,112 @@ class Process_data:
         label_start_time = self.convert_timeformat(label[0] + " " + label[1])
         label_end_time = self.convert_timeformat(label[2] + " " + label[3])
 
-        # print(user)
+        print("checking for matching labels and files for user: " + user["id"])
+        print("files to check: " + str(len(user["files"])))
         for index, fileName in enumerate(user["files"]):
             matching_start_time = False
             matching_end_time = False
             # Check each trackpoint and check if they are a match
-            trackpoint_list = []
+            #trackpoint_list = []
+            trackpoint_list = self.read_trajectory(user["path"], fileName)
 
-            for trackpoint in self.read_trajectory(user["path"], fileName):
-
-                track_point_time = trackpoint[3] + \
-                    " " + trackpoint[4]
-
-                # Case to skip matching for optimization
-                if not matching_start_time and time.strptime(track_point_time, "%Y-%m-%d %H:%M:%S") > time.strptime(label_start_time, "%Y-%m-%d %H:%M:%S"):
-                    break
+            if (len(trackpoint_list) > 0):
+                first_trackpoint = trackpoint_list[0]
+                first_track_point_time = first_trackpoint[3] + \
+                    " " + first_trackpoint[4]
+                if first_track_point_time == label_start_time:
+                    matching_start_time = True
                 else:
-                    if matching_start_time:
-                        # Appending all trackpoints after start time
-                        trackpoint_list.append(trackpoint)
+                    continue
 
-                    if label_start_time == track_point_time:
-                        matching_start_time = True
-                        # Appending first trackpoint
-                        trackpoint_list.append(trackpoint)
-                    # Else to avoid extra checks
-                    else:
-                        # Todo - could these two if statements be combined as they are both checking the same thing?
-                        if (label_end_time == track_point_time) and matching_start_time:
-                            matching_end_time = True
+                last_trackpoint = trackpoint_list[-1]
+                last_track_point_time = last_trackpoint[3] + \
+                    " " + last_trackpoint[4]
+                if last_track_point_time == label_end_time:
+                    matching_end_time = True
+                else:
+                    continue
 
-                        if matching_start_time and matching_end_time:
-                            print("Found match on activity '" +
-                                  label[4] + "' With file '" + fileName + "'")
-                            user["files"].pop(index)
-                            # Insert activity with transportation_mode, retrieving ID of activity
+                if matching_start_time and matching_end_time:
+                    print("found match for user: " + str(user["id"]))
+                    # Insert activity
+                    activity = {
+                        "user_id": user["id"],
+                        "transportation_mode": label[4],
+                        "start_date_time": label_start_time,
+                        "end_date_time": label_end_time}
+                    self.db_connector.insert_activity(activity)
+                    activity_id = self.db_connector.get_last_inserted_id()
 
-                            self.db_connector.insert_activity({
-                                "user_id": user["id"],
-                                "transportation_mode": label[4],
-                                "start_date_time": trackpoint_list[0][3] + " " + trackpoint_list[0][4],
-                                "end_date_time": trackpoint_list[-1][3] + " " + trackpoint_list[-1][4]})
+                    # Insert each trackpoint and connect to activity
+                    for idx, trackpoint in enumerate(trackpoint_list):
+                        trackpoint_date_days = float(trackpoint[3][-2])
+                        trackpoint_date_time = trackpoint[3] + \
+                            " " + trackpoint[4]
+                        trackpoint_list[idx] = (int(activity_id), float(trackpoint[0]), float(
+                            trackpoint[1]), int(trackpoint[2]), trackpoint_date_days, trackpoint_date_time)
+                    # Batch insert trackpoints
+                    print("batch inserting for activity " + str(activity_id))
+                    self.db_connector.batch_insert_trackpoints(trackpoint_list)
 
-                            activity_id = self.db_connector.get_last_inserted_id()
-                            # for each trackpoint in trackpoint_list: insert trackpoint and connect to activity
-                            for index, trackpoint in enumerate(trackpoint_list):
-                                trackpoint_date_days = float(trackpoint[3][-2])
-                                trackpoint_date_time = trackpoint[3] + \
-                                    " " + trackpoint[4]
-                                trackpoint_list[index] = (int(activity_id), float(trackpoint[0]), float(
-                                    trackpoint[1]), int(trackpoint[2]), trackpoint_date_days, trackpoint_date_time)
-                                # self.db_connector.insert_trackpoint(trackpoint)
-                            # Batch insert trackpoints
-                            print("batch inserting for activity " +
-                                  str(activity_id))
-                            self.db_connector.batch_insert_trackpoints(
-                                trackpoint_list)
-                            # print(trackpoint_list)
-                            break
-                            # return fileName
+                    # Remove the file from the list of files
+                    user["files"].pop(index)
+                    # return
+
+            # for trackpoint in trackpoint_list:
+
+            #         continue
+
+            #     track_point_time = trackpoint[3] + \
+            #         " " + trackpoint[4]
+
+            #     # Case to skip matching for optimization
+            #     if not matching_start_time and time.strptime(track_point_time, "%Y-%m-%d %H:%M:%S") > time.strptime(label_start_time, "%Y-%m-%d %H:%M:%S"):
+            #         break
+            #     else:
+            #         if matching_start_time:
+            #             # Appending all trackpoints after start time
+            #             trackpoint_list.append(trackpoint)
+
+            #         if label_start_time == track_point_time:
+            #             matching_start_time = True
+            #             # Appending first trackpoint
+            #             trackpoint_list.append(trackpoint)
+            #         # Else to avoid extra checks
+            #         else:
+            #             # Todo - could these two if statements be combined as they are both checking the same thing?
+            #             if (label_end_time == track_point_time) and matching_start_time:
+            #                 matching_end_time = True
+
+            #             if matching_start_time and matching_end_time:
+            #                 print("Found match on activity '" +
+            #                       label[4] + "' With file '" + fileName + "'")
+            #                 user["files"].pop(index)
+            #                 # Insert activity with transportation_mode, retrieving ID of activity
+
+            #                 self.db_connector.insert_activity({
+            #                     "user_id": user["id"],
+            #                     "transportation_mode": label[4],
+            #                     "start_date_time": trackpoint_list[0][3] + " " + trackpoint_list[0][4],
+            #                     "end_date_time": trackpoint_list[-1][3] + " " + trackpoint_list[-1][4]})
+
+            #                 activity_id = self.db_connector.get_last_inserted_id()
+            #                 # for each trackpoint in trackpoint_list: insert trackpoint and connect to activity
+            #                 for index, trackpoint in enumerate(trackpoint_list):
+            #                     trackpoint_date_days = float(trackpoint[3][-2])
+            #                     trackpoint_date_time = trackpoint[3] + \
+            #                         " " + trackpoint[4]
+            #                     trackpoint_list[index] = (int(activity_id), float(trackpoint[0]), float(
+            #                         trackpoint[1]), int(trackpoint[2]), trackpoint_date_days, trackpoint_date_time)
+            #                     # self.db_connector.insert_trackpoint(trackpoint)
+            #                 # Batch insert trackpoints
+            #                 print("batch inserting for activity " +
+            #                       str(activity_id))
+            #                 self.db_connector.batch_insert_trackpoints(
+            #                     trackpoint_list)
+            #                 # print(trackpoint_list)
+            #                 break
+            #                 # return fileName
 
     def convert_timeformat(self, date):
         return date.replace("/", "-")
