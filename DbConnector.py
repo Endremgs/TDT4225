@@ -3,6 +3,7 @@ import mysql.connector as mysql
 import os
 from dotenv import load_dotenv
 import time
+from haversine import haversine, Unit
 
 load_dotenv()
 
@@ -118,7 +119,29 @@ class DbConnector:
 
     def get_last_inserted_id(self):
         return self.cursor.lastrowid
-
+    
+    def total_distance(self):
+        query = """SELECT lat, lon FROM trackpoint WHERE activity_id IN 
+        (SELECT id FROM activity WHERE user_id = 084 AND transportation_mode = 'walk' 
+        AND YEAR(start_date_time)='2008')"""
+        self.cursor.execute(query)
+        coordinates = self.cursor.fetchall()
+        total_distance = 0
+        for index in range(len(coordinates)):
+            if index == len(coordinates)-1:
+                break
+            distance = haversine(coordinates[index], coordinates[index+1])
+            total_distance += distance
+            
+            
+        print(total_distance)    
+       
+        
+def main():
+        dbConnector = DbConnector()
+        dbConnector.total_distance()
+main()
+        
 # old trackpoint structure as a dictionary:
 # trackpoint_list = [{"lat": trajectory[0],
 #                     "lon": trajectory[1],
