@@ -1,4 +1,3 @@
-import time
 import os
 import pandas as pd
 import numpy as np
@@ -15,7 +14,7 @@ class Process_data:
         self.trackpoints = []
         self.db_connector = db_connector
 
-    # Read all users (labeled and unlabeled) and save to self.users
+    # Read all users (labeled and unlabeled) and stores in self.users
     def read_users(self):
         self.read_labeled_users()
         path = BASE_PATH + "/Data"
@@ -34,8 +33,6 @@ class Process_data:
                         "has_label": self.user_has_label(userID)
                     }
                     users[userID].update(userInfo)
-                    # Query for inserting user into database
-                    # self.db_connector.insert_user(userInfo)
         self.users = users
         return users
 
@@ -49,7 +46,7 @@ class Process_data:
         self.users_with_labels = formatted_labeled_users
         return formatted_labeled_users
 
-    # Check if user with userID has labels.
+    # Helper function to check if user with given userID has labels.
     def user_has_label(self, userID):
         if len(self.users_with_labels) == 0:
             self.read_labeled_users()
@@ -61,23 +58,21 @@ class Process_data:
     #   Connect all trackpoints within the plt file to the activity
     def retrieve_activities_for_unlabeled_user(self, user):
         if not user["has_label"]:
-            # activities = []
             filenames = os.listdir(user["path"])
             for filename in filenames:
-                # Insert activity without transportation_mode
+
                 trackpoint_list = self.read_trajectory(user["path"], filename)
                 # Skipping activities with less than 2500 trackpoints
                 if (len(trackpoint_list) == 0):
                     continue
 
+                # Create activity without transportation_mode
                 activity = {
                     "user_id": user["id"],
-                    # "transportation_mode": "",
                     "start_date_time": trackpoint_list[0][3] + " " + trackpoint_list[0][4],
                     "end_date_time": trackpoint_list[-1][3] + " " + trackpoint_list[-1][4]}
-                # activities.append(activity)
 
-                # Insert activity
+                # Insert activity & retrieve id
                 self.db_connector.insert_activity(activity)
                 activity_id = self.db_connector.get_last_inserted_id()
 
@@ -88,23 +83,22 @@ class Process_data:
                         " " + trackpoint[4]
                     trackpoint_list[index] = (int(activity_id), float(trackpoint[0]), float(
                         trackpoint[1]), int(trackpoint[2]), trackpoint_date_days, trackpoint_date_time)
-                    # self.db_connector.insert_trackpoint(trackpoint)
                 # Batch insert trackpoints
                 print("batch inserting for activity " + str(activity_id))
                 self.db_connector.batch_insert_trackpoints(trackpoint_list)
-
-            # return activities
         else:
             raise Exception("User possibly has labels")
 
-    # Finds all activities that are labeled for a given user
-        #
-
-    def retrieve_activities_with_labels(self, user):
+    # Add all activities for a user which has labels
+    def retrieve_activities_for_user_with_labels(self, user):
         if user["has_label"]:
             with open(user["path"].replace("/Trajectory", "/labels.txt"), "r") as file:
-                for line in file.readlines()[1:]:
+                labels = file.readlines()[1:]
+                for line in labels:
                     label = line.split()
+                    print(
+                        "checking for matching labels and files for user: " + user["id"])
+                    print("Labels to check: " + str(len(labels)))
                     self.find_matching_trajectory(label, user)
 
             # Create activitites for remainding plt files that were not matched to label
@@ -117,6 +111,8 @@ class Process_data:
                     "user_id": user["id"],
                     "start_date_time": trackpoint_list[0][3] + " " + trackpoint_list[0][4],
                     "end_date_time": trackpoint_list[-1][3] + " " + trackpoint_list[-1][4]}
+
+                # Insert activity & retrieve id
                 self.db_connector.insert_activity(activity)
                 activity_id = self.db_connector.get_last_inserted_id()
 
@@ -127,11 +123,11 @@ class Process_data:
                         " " + trackpoint[4]
                     trackpoint_list[index] = (int(activity_id), float(trackpoint[0]), float(
                         trackpoint[1]), int(trackpoint[2]), trackpoint_date_days, trackpoint_date_time)
+
                 # Batch insert trackpoints
                 print("batch inserting for activity " + str(activity_id))
                 self.db_connector.batch_insert_trackpoints(trackpoint_list)
 
-            # return activities
         else:
             raise Exception("User does not have label")
 
@@ -139,7 +135,7 @@ class Process_data:
         trackpoint_list = []
         path = user_path+"/"+filename
         trajectories = pd.read_csv(path, header=None, skiprows=6).to_numpy()
-        if len(trajectories) < 2500:
+        if len(trajectories) <= 2500:
             trackpoint_list = [(trajectory[0],
                                trajectory[1],
                                trajectory[3],
@@ -148,22 +144,23 @@ class Process_data:
                                for trajectory in trajectories]
         return trackpoint_list
 
-    # Take in a label
+    # Takes in a label for a user
     # Then return the activity(plt file) with a matching start and end time
     def find_matching_trajectory(self, label, user):
         label_start_time = self.convert_timeformat(label[0] + " " + label[1])
         label_end_time = self.convert_timeformat(label[2] + " " + label[3])
 
-        print("checking for matching labels and files for user: " + user["id"])
         print("files to check: " + str(len(user["files"])))
         for index, fileName in enumerate(user["files"]):
             matching_start_time = False
             matching_end_time = False
-            # Check each trackpoint and check if they are a match
-            #trackpoint_list = []
+
             trackpoint_list = self.read_trajectory(user["path"], fileName)
 
+            # Skipping activities with less than 2500 trackpoints
             if (len(trackpoint_list) > 0):
+
+                # Check if start time is a match, skipping otherwise
                 first_trackpoint = trackpoint_list[0]
                 first_track_point_time = first_trackpoint[3] + \
                     " " + first_trackpoint[4]
@@ -172,6 +169,7 @@ class Process_data:
                 else:
                     continue
 
+                # Check if end time is a match, skipping otherwise
                 last_trackpoint = trackpoint_list[-1]
                 last_track_point_time = last_trackpoint[3] + \
                     " " + last_trackpoint[4]
@@ -202,76 +200,14 @@ class Process_data:
                     print("batch inserting for activity " + str(activity_id))
                     self.db_connector.batch_insert_trackpoints(trackpoint_list)
 
-                    # Remove the file from the list of files
+                    # Remove the file from the list of files to check
                     user["files"].pop(index)
-                    # return
 
-            # for trackpoint in trackpoint_list:
-
-            #         continue
-
-            #     track_point_time = trackpoint[3] + \
-            #         " " + trackpoint[4]
-
-            #     # Case to skip matching for optimization
-            #     if not matching_start_time and time.strptime(track_point_time, "%Y-%m-%d %H:%M:%S") > time.strptime(label_start_time, "%Y-%m-%d %H:%M:%S"):
-            #         break
-            #     else:
-            #         if matching_start_time:
-            #             # Appending all trackpoints after start time
-            #             trackpoint_list.append(trackpoint)
-
-            #         if label_start_time == track_point_time:
-            #             matching_start_time = True
-            #             # Appending first trackpoint
-            #             trackpoint_list.append(trackpoint)
-            #         # Else to avoid extra checks
-            #         else:
-            #             # Todo - could these two if statements be combined as they are both checking the same thing?
-            #             if (label_end_time == track_point_time) and matching_start_time:
-            #                 matching_end_time = True
-
-            #             if matching_start_time and matching_end_time:
-            #                 print("Found match on activity '" +
-            #                       label[4] + "' With file '" + fileName + "'")
-            #                 user["files"].pop(index)
-            #                 # Insert activity with transportation_mode, retrieving ID of activity
-
-            #                 self.db_connector.insert_activity({
-            #                     "user_id": user["id"],
-            #                     "transportation_mode": label[4],
-            #                     "start_date_time": trackpoint_list[0][3] + " " + trackpoint_list[0][4],
-            #                     "end_date_time": trackpoint_list[-1][3] + " " + trackpoint_list[-1][4]})
-
-            #                 activity_id = self.db_connector.get_last_inserted_id()
-            #                 # for each trackpoint in trackpoint_list: insert trackpoint and connect to activity
-            #                 for index, trackpoint in enumerate(trackpoint_list):
-            #                     trackpoint_date_days = float(trackpoint[3][-2])
-            #                     trackpoint_date_time = trackpoint[3] + \
-            #                         " " + trackpoint[4]
-            #                     trackpoint_list[index] = (int(activity_id), float(trackpoint[0]), float(
-            #                         trackpoint[1]), int(trackpoint[2]), trackpoint_date_days, trackpoint_date_time)
-            #                     # self.db_connector.insert_trackpoint(trackpoint)
-            #                 # Batch insert trackpoints
-            #                 print("batch inserting for activity " +
-            #                       str(activity_id))
-            #                 self.db_connector.batch_insert_trackpoints(
-            #                     trackpoint_list)
-            #                 # print(trackpoint_list)
-            #                 break
-            #                 # return fileName
-
+    # Helper function to fix time format
     def convert_timeformat(self, date):
         return date.replace("/", "-")
 
-    # Iterate through all labels of the user
-    # Then connect each unmatched activity with a empty activity
-    def process_labeled_users(self):
-        for user_id in self.users_with_labels:
-            print("Checking activities for user " + user_id + "...")
-            for item in self.retrieve_activity_labels(self.users[user_id]):
-                print("bob")
-
+    # Main function for initializing the processing and insertion of data
     def process(self):
         self.read_users()
         user_list = []
@@ -284,41 +220,6 @@ class Process_data:
         for user in self.users.values():
             if (user.get("has_label")):
                 if user["has_label"]:
-                    self.retrieve_activities_with_labels(user)
+                    self.retrieve_activities_for_user_with_labels(user)
                 else:
                     self.retrieve_activities_for_unlabeled_user(user)
-
-# def main():
-#     process_data = Process_data()
-#     process_data.read_labeled_users()
-#     process_data.read_users()
-#     # print(process_data.users_with_labels)
-#     # process_data.retrieve_activities_for_unlabeled_user(
-#     #   process_data.users["001"])
-#     # length = 0
-#     # for userID in process_data.read_labeled_users():
-#     #     # print(process_data.users[userID])
-
-#     #     activities = process_data.retrieve_activity_labels(
-#     #         process_data.users[userID])
-#     #     length += len(activities)
-
-#     #     # print(activities)
-#     # # print(length)
-
-#     # file_count = 0
-#     # for userID in process_data.read_labeled_users():
-#     #     file_count += len(os.listdir('dataset/Data/'+userID+'/Trajectory'))
-
-#     # print(file_count)
-
-#     for userID in process_data.users_with_labels:
-#         print("Checking activities for user " + userID + "...")
-#         for item in process_data.retrieve_activities_with_labels(process_data.users[userID]):
-#             process_data.find_matching_trajectory(
-#                 item, process_data.users[userID])
-#     print("FINISHED")
-#     process_data.read_trajectory("175", "20071019052315.plt")
-
-
-# main()
