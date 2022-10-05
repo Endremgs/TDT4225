@@ -73,7 +73,7 @@ class DbConnector:
         print("inserted user with ID: " + str(user["id"]))
 
     def insert_activity(self, activity):
-        if 'transportation_mode' in activity.keys():
+        if 'transportation_mode' in activity.keys() and activity["transportation_mode"] != False:
             query = "INSERT INTO activity (user_id, transportation_mode, start_date_time, end_date_time) VALUES ('%s', '%s', '%s', '%s')"
             self.cursor.execute(query % (
                 activity["user_id"], activity["transportation_mode"], activity["start_date_time"], activity["end_date_time"]))
@@ -95,6 +95,12 @@ class DbConnector:
                             float(trackpoint["lon"]), int(trackpoint["alt"]), trackpoint_date_days, trackpoint_date_time))
         self.db_connection.commit()
 
+    def batch_insert_activity_with_trackpoints(self, activities):
+        for activity in activities:
+            self.insert_activity(activity)
+            activity_id = self.get_last_inserted_id()
+            self.batch_insert_trackpoints_with_id(activity["trackpoints"], activity_id)
+
     def batch_insert_users(self, user_list):
         print("inserting users...")
         query = "INSERT INTO user (id, has_labels) VALUES (%s, %s)"
@@ -108,6 +114,21 @@ class DbConnector:
             print("inserting trackpoint_list with length:")
             print(len(trackpoint_list))
             query = "INSERT INTO trackpoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s, %s, %s, %s, %s, %s)"
+            self.cursor.executemany(query, trackpoint_list)
+            end = time.time()
+            self.db_connection.commit()
+            print("finished insert after: " + str(end-start))
+            print("Total time elapsed: " + str(end - self.start_time))
+        except Exception as e:
+            print(trackpoint_list)
+            print(e)
+
+    def batch_insert_trackpoints_with_id(self, trackpoint_list, activity_id):
+        try:
+            start = time.time()
+            print("inserting trackpoint_list with length:")
+            print(len(trackpoint_list))
+            query = "INSERT INTO trackpoint ("+ str(activity_id) +", lat, lon, altitude, date_days, date_time) VALUES (%s, %s, %s, %s, %s, %s)"
             self.cursor.executemany(query, trackpoint_list)
             end = time.time()
             self.db_connection.commit()
@@ -137,10 +158,10 @@ class DbConnector:
         print(total_distance)    
        
         
-def main():
-        dbConnector = DbConnector()
-        dbConnector.total_distance()
-main()
+# def main():
+#        dbConnector = DbConnector()
+#        dbConnector.total_distance()
+#main()
         
 # old trackpoint structure as a dictionary:
 # trackpoint_list = [{"lat": trajectory[0],
