@@ -12,6 +12,8 @@ class Process_data_v2:
         #activities: {user_id, transportation_mode, start_date_time, end_date_time, trackpoints:[{lat, lon, altitude, date_days, date_time}]}
         self.activities = []
         self.trackpoints = []
+        self.activity_id_counter = 1
+        self.trackpoint_id_counter = 1
         self.db_connector = db_connector
         
     # Read single user
@@ -40,18 +42,27 @@ class Process_data_v2:
                     continue
                 trackpoints = []
                 for trackpoint in activity_trackpoints:
-                    trackpoint = {"lat": trackpoint[0], 
-                                  "lon": trackpoint[1], 
-                                  "altitude": trackpoint[2], 
-                                  "date_days": trackpoint[3], 
-                                  "date_time": trackpoint[4]}
-                    trackpoints.append(trackpoint)
-                res = self.match_label(activity_trackpoints, user_id)
-                activity = {"user_id": user_id, 
+                    trackpoint_date_days = float(trackpoint[3][-2])
+                    trackpoint_date_time = trackpoint[3] + \
+                            " " + trackpoint[4]
+                    new_item = (int(self.trackpoint_id_counter),
+                                int(self.activity_id_counter),
+                                float(trackpoint[0]),
+                                float(trackpoint[1]), 
+                                float(trackpoint[2]), 
+                                trackpoint_date_days, 
+                                trackpoint_date_time)
+                    self.trackpoint_id_counter += 1
+                    trackpoints.append(new_item)
+                #res = self.match_label(activity_trackpoints, user_id)
+                res = False
+                activity = {"id": self.activity_id_counter,
+                            "user_id": user_id, 
                             "start_date_time": activity_trackpoints[0][3] + " " + activity_trackpoints[0][4],
                             "end_date_time": activity_trackpoints[-1][3] + " " + activity_trackpoints[-1][4],
                             "transportation_mode": res,
                             "trackpoints": trackpoints}
+                self.activity_id_counter += 1
                 self.activities.append(activity)
 
     # Find all users with labels
