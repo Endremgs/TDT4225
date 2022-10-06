@@ -40,6 +40,15 @@ class Process_data_v2:
                 activity_trackpoints = np.genfromtxt(path, skip_header=6, skip_footer=1, delimiter=',',dtype=str, usecols=(0,1,3,5,6))
                 if(len(activity_trackpoints) >= 2500):
                     continue
+                res = self.match_label(activity_trackpoints, user_id)
+                activity = {"id": int(self.activity_id_counter),
+                            "user_id": str(user_id), 
+                            "transportation_mode": res,
+                            "start_date_time": activity_trackpoints[0][3] + " " + activity_trackpoints[0][4],
+                            "end_date_time": activity_trackpoints[-1][3] + " " + activity_trackpoints[-1][4]}
+                self.activities.append(activity)
+                self.db_connector.insert_activity_with_id_v2(activity)
+
                 trackpoints = []
                 for trackpoint in activity_trackpoints:
                     trackpoint_date_days = float(trackpoint[3][-2])
@@ -54,16 +63,10 @@ class Process_data_v2:
                                 trackpoint_date_time)
                     self.trackpoint_id_counter += 1
                     trackpoints.append(new_item)
-                #res = self.match_label(activity_trackpoints, user_id)
-                res = False
-                activity = {"id": self.activity_id_counter,
-                            "user_id": user_id, 
-                            "start_date_time": activity_trackpoints[0][3] + " " + activity_trackpoints[0][4],
-                            "end_date_time": activity_trackpoints[-1][3] + " " + activity_trackpoints[-1][4],
-                            "transportation_mode": res,
-                            "trackpoints": trackpoints}
+                values = ', '.join(map(str, trackpoints))
+                self.db_connector.insert_trackpoints_with_id(values)
                 self.activity_id_counter += 1
-                self.activities.append(activity)
+
 
     # Find all users with labels
     def find_users_with_labels(self):
@@ -136,19 +139,23 @@ class Process_data_v2:
     # Main function
     def process(self):
         self.read_all_users()
-        for user in self.users.values():
-            print("reading user: "+ user["id"])
-            if(user["has_label"]):
-                self.read_labels(user["id"])
-            self.read_user_activities(user["id"])
         #Reformat users
         user_list = []
         for user in self.users.values():
             if (user.get("id")):
                 user_list.append((user["id"], int(user["has_label"])))
-
         self.db_connector.batch_insert_users(user_list)
-        self.db_connector.batch_insert_activity_with_trackpoints(self.activities)
+
+        for user in self.users.values():
+            print("reading user: "+ user["id"])
+            if(user["has_label"]):
+                self.read_labels(user["id"])
+            self.read_user_activities(user["id"])
+
+        #self.db_connector.batch_insert_activities_with_id(self.activities)
+        #self.db_connector.batch_insert_trackpoints_with_id(self.trackpoints)
+        
+
             
 #def main():
     #process_data = Process_data_v2()
