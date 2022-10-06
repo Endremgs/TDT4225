@@ -65,59 +65,12 @@ class DbConnector:
         self.cursor.execute("DROP TABLE IF EXISTS %s" % table)
         self.db_connection.commit()
 
-    def insert_user(self, user):
-        # print(user)
-        query = "INSERT INTO user (id, has_labels) VALUES ('%s', '%s')"
-        self.cursor.execute(query % (user["id"], int(user["has_label"])))
-        self.db_connection.commit()
-        print("inserted user with ID: " + str(user["id"]))
-
-    def insert_activity(self, activity):
-        if 'transportation_mode' in activity.keys() and activity["transportation_mode"] != False:
-            query = "INSERT INTO activity (user_id, transportation_mode, start_date_time, end_date_time) VALUES ('%s', '%s', '%s', '%s')"
-            self.cursor.execute(query % (
-                activity["user_id"], activity["transportation_mode"], activity["start_date_time"], activity["end_date_time"]))
-            self.db_connection.commit()
-        else:
-            query = "INSERT INTO activity (user_id, start_date_time, end_date_time) VALUES ('%s', '%s', '%s')"
-            self.cursor.execute(query % (
-                activity["user_id"], activity["start_date_time"], activity["end_date_time"]))
-            self.db_connection.commit()
-        print("inserted activity:" + str(activity["user_id"] + " " + activity["start_date_time"] + " " + activity["end_date_time"]))
-        #print(activity)
-
-    def insert_trackpoint(self, trackpoint):
-        print(trackpoint)
-        query = "INSERT INTO trackpoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
-        trackpoint_date_days = float(trackpoint["date"][-2])
-        trackpoint_date_time = trackpoint["date"] + " " + trackpoint["time"]
-        self.cursor.execute(query % (trackpoint["activity_id"], float(trackpoint["lat"]),
-                            float(trackpoint["lon"]), int(trackpoint["alt"]), trackpoint_date_days, trackpoint_date_time))
-        self.db_connection.commit()
-
-
     def batch_insert_users(self, user_list):
         print("inserting users...")
         query = "INSERT INTO user (id, has_labels) VALUES (%s, %s)"
         self.cursor.executemany(query, user_list)
         self.db_connection.commit()
         print("finished insert!")
-
-    def batch_insert_trackpoints(self, trackpoint_list):
-        try:
-            start = time.time()
-            print("inserting trackpoint_list with length:")
-            print(len(trackpoint_list))
-            query = "INSERT INTO trackpoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s, %s, %s, %s, %s, %s)"
-            self.cursor.executemany(query, trackpoint_list)
-            end = time.time()
-            self.db_connection.commit()
-            print("finished insert after: " + str(end-start))
-            print("Total time elapsed: " + str(end - self.start_time))
-        except Exception as e:
-            print(trackpoint_list)
-            print(e)
-
 
     def get_last_inserted_id(self):
         return self.cursor.lastrowid
@@ -134,18 +87,9 @@ class DbConnector:
                 break
             distance = haversine(coordinates[index], coordinates[index+1])
             total_distance += distance
-            
-            
         print(total_distance)    
-       
-    ## NEW STUFF
-    #def batch_insert_activities(self, activities):
-    #    self.batch_insert_activity_with_id(activities)
-    #    for activity in activities:
-    #        activity_id = self.get_last_inserted_id()
-    #        self.batch_insert_trackpoints_with_id(activity[-1])
 
-    def insert_activity_with_id_v2(self, activity):
+    def insert_activity_with_id(self, activity):
         try:
             if(activity["transportation_mode"] != False):
                 query = "INSERT INTO activity (id, user_id, transportation_mode, start_date_time, end_date_time) VALUES ('%s', '%s', '%s', '%s', '%s')"
@@ -163,35 +107,11 @@ class DbConnector:
             self.db_connection.commit()
         except Exception as e:
             print(e)
-            
+
     def insert_trackpoints_with_id(self, trackpoints):
         try:
             query = "INSERT INTO trackpoint (id, activity_id, lat, lon, altitude, date_days, date_time) VALUES {}".format(trackpoints)
             self.cursor.execute(query)
-            self.db_connection.commit()
-        except Exception as e:
-            print(e)
-
-    def batch_insert_trackpoints_with_id(self, trackpoint_list):
-        try:
-            query = "INSERT INTO trackpoint (id, activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s ,%s, %s, %s, %s, %s, %s)"
-            self.cursor.executemany(query, trackpoint_list)
-            self.db_connection.commit()
-        except Exception as e:
-            print(e)
-
-    def batch_insert_activities_with_id(self, activities):
-        try:
-            query = "INSERT INTO activity (id, user_id, transportation_mode, start_date_time, end_date_time) VALUES (%s, %s, %s, %s, %s)"
-            self.cursor.executemany(query, activities)
-            self.db_connection.commit()
-        except Exception as e:
-            print(e)
-
-    def batch_insert_trackpoints_with_id(self, trackpoint_list):
-        try:
-            query = "INSERT INTO trackpoint (id, activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s ,%s, %s, %s, %s, %s, %s)"
-            self.cursor.executemany(query, trackpoint_list)
             self.db_connection.commit()
         except Exception as e:
             print(e)
@@ -203,5 +123,5 @@ class DbConnector:
 
         for label in labels:
             query = "UPDATE activity SET transportation_mode = '%s' WHERE start_date_time = '%s' AND end_date_time = '%s' AND user_id = '%s'"
-            self.cursor.execute(query % (label["transportation_mode"], label["start_date_time"], label["end_date_time"], label["user_id"]))
+            self.cursor.execute(query % (label["transportation_mode"], label["start_time"], label["end_time"], label["user_id"]))
             self.db_connection.commit()
