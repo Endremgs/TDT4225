@@ -23,7 +23,7 @@ class DbConnector:
 
     def __init__(self,
                  # HOST="tdt4225-13.idi.ntnu.no",
-                 HOST="127.0.0.1",
+                 HOST="localhost",
                  PORT=3306,
                  DATABASE="exercise2",
                  # USER="gruppe13",
@@ -65,36 +65,6 @@ class DbConnector:
         self.cursor.execute("DROP TABLE IF EXISTS %s" % table)
         self.db_connection.commit()
 
-    def insert_user(self, user):
-        # print(user)
-        query = "INSERT INTO user (id, has_labels) VALUES ('%s', '%s')"
-        self.cursor.execute(query % (user["id"], int(user["has_label"])))
-        self.db_connection.commit()
-        print("inserted user with ID: " + str(user["id"]))
-
-    def insert_activity(self, activity):
-        if 'transportation_mode' in activity.keys():
-            query = "INSERT INTO activity (user_id, transportation_mode, start_date_time, end_date_time) VALUES ('%s', '%s', '%s', '%s')"
-            self.cursor.execute(query % (
-                activity["user_id"], activity["transportation_mode"], activity["start_date_time"], activity["end_date_time"]))
-            self.db_connection.commit()
-        else:
-            query = "INSERT INTO activity (user_id, start_date_time, end_date_time) VALUES ('%s', '%s', '%s')"
-            self.cursor.execute(query % (
-                activity["user_id"], activity["start_date_time"], activity["end_date_time"]))
-            self.db_connection.commit()
-        print("inserted activity:")
-        print(activity)
-
-    def insert_trackpoint(self, trackpoint):
-        print(trackpoint)
-        query = "INSERT INTO trackpoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
-        trackpoint_date_days = float(trackpoint["date"][-2])
-        trackpoint_date_time = trackpoint["date"] + " " + trackpoint["time"]
-        self.cursor.execute(query % (trackpoint["activity_id"], float(trackpoint["lat"]),
-                            float(trackpoint["lon"]), int(trackpoint["alt"]), trackpoint_date_days, trackpoint_date_time))
-        self.db_connection.commit()
-
     def batch_insert_users(self, user_list):
         print("inserting users...")
         query = "INSERT INTO user (id, has_labels) VALUES (%s, %s)"
@@ -102,27 +72,60 @@ class DbConnector:
         self.db_connection.commit()
         print("finished insert!")
 
-    def batch_insert_trackpoints(self, trackpoint_list):
-        try:
-            start = time.time()
-            print("inserting trackpoint_list with length:")
-            print(len(trackpoint_list))
-            query = "INSERT INTO trackpoint (activity_id, lat, lon, altitude, date_days, date_time) VALUES (%s, %s, %s, %s, %s, %s)"
-            self.cursor.executemany(query, trackpoint_list)
-            end = time.time()
-            self.db_connection.commit()
-            print("finished insert after: " + str(end-start))
-            print("Total time elapsed: " + str(end - self.start_time))
-        except Exception as e:
-            print(trackpoint_list)
-            print(e)
-
     def get_last_inserted_id(self):
         return self.cursor.lastrowid
     
+    def remove_invalid_altitudes(self):  
+        query = """UPDATE trackpoint SET altitude = %s WHERE altitude = %s"""
+        val = (int(), int(-777))
+        #query = """UPDATE trackpoint SET altitude = 0 WHERE altitude = IN(-777)"""
+        self.cursor.execute(query, val)
+        self.db_connection.commit()  
+
+    def insert_activity_with_id(self, activity):
+        try:
+            if(activity["transportation_mode"] != False):
+                query = "INSERT INTO activity (id, user_id, transportation_mode, start_date_time, end_date_time) VALUES ('%s', '%s', '%s', '%s', '%s')"
+                self.cursor.execute(query % (activity["id"], 
+                                            activity["user_id"], 
+                                            activity["transportation_mode"], 
+                                            activity["start_date_time"], 
+                                            activity["end_date_time"]))
+            else: 
+                query = "INSERT INTO activity (id, user_id, start_date_time, end_date_time) VALUES ('%s', '%s', '%s', '%s')"
+                self.cursor.execute(query % (activity["id"], 
+                                            activity["user_id"], 
+                                            activity["start_date_time"], 
+                                            activity["end_date_time"]))
+            self.db_connection.commit()
+        except Exception as e:
+            print(e)
+
+    def insert_trackpoints_with_id(self, trackpoints):
+        try:
+            query = "INSERT INTO trackpoint (id, activity_id, lat, lon, altitude, date_days, date_time) VALUES {}".format(trackpoints)
+            self.cursor.execute(query)
+            self.db_connection.commit()
+        except Exception as e:
+            print(e)
+    
+    def update_activity_labels(self, labels):
+        query = "UPDATE activity SET transportation_mode = null WHERE transportation_mode is not null"
+        self.cursor.execute(query)
+        self.db_connection.commit()
+
+        for label in labels:
+            query = "UPDATE activity SET transportation_mode = '%s' WHERE start_date_time = '%s' AND end_date_time = '%s' AND user_id = '%s'"
+            self.cursor.execute(query % (label["transportation_mode"], label["start_time"], label["end_time"], label["user_id"]))
+            self.db_connection.commit()
+
+    ########################################
+    ## TASK 2 QUERIES   ####################
+    ########################################
+
     def total_distance(self):
         query = """SELECT lat, lon FROM trackpoint WHERE activity_id IN 
-        (SELECT id FROM activity WHERE user_id = 084 AND transportation_mode = 'walk' 
+        (SELECT id FROM activity WHERE user_id = 112 AND transportation_mode = 'walk' 
         AND YEAR(start_date_time)='2008')"""
         self.cursor.execute(query)
         coordinates = self.cursor.fetchall()
@@ -132,20 +135,45 @@ class DbConnector:
                 break
             distance = haversine(coordinates[index], coordinates[index+1])
             total_distance += distance
-            
-            
         print(total_distance)    
-       
-        
+    
+    def most_altitude_gained(self):
+        query = """SELECT act1.user_id, SUM(altitude_gained) * 0.3048 
+                FROM 
+                    (SELECT tp1.activity_id AS act_id, 
+                    SUM(t2.altitude - tp1.altitude) AS altitude_gained 
+                    FROM trackpoint 
+                    AS tp1 JOIN trackpoint AS t2 
+                    ON tp1.id = t2.id - 1 
+                    WHERE t2.altitude > tp1.altitude 
+                    GROUP BY tp1.activity_id) AS t, 
+                activity AS act1 WHERE act_id = act1.id 
+                GROUP BY act1.user_id 
+                ORDER BY SUM(altitude_gained) 
+                DESC LIMIT 20"""
+        self.cursor.execute(query)
+        distances = self.cursor.fetchall()
+        for i, info in enumerate(distances):
+            print(i,"||", info[0],"|", info[1], "m")
+    
+    def find_users_with_transportation_mode(self):
+        query = """SELECT user_id, transportation_mode, COUNT(transportation_mode) 
+                FROM activity 
+                WHERE transportation_mode IS NOT NULL
+                GROUP BY user_id, transportation_mode 
+                ORDER BY user_id, COUNT(transportation_mode) DESC"""
+        self.cursor.execute(query)
+        result = self.cursor.fetchall()
+        already_printed = []
+        print("id ","|", "transportation_mode")
+        print("----------------------------")
+        for i, info in enumerate(result):
+            if info[0] not in already_printed:
+                print(info[0],"|", info[1])
+                already_printed.append(info[0])
+        return result
 def main():
-        dbConnector = DbConnector()
-        dbConnector.total_distance()
+    db_connector = DbConnector()
+    db_connector.find_users_with_transportation_mode()
+
 main()
-        
-# old trackpoint structure as a dictionary:
-# trackpoint_list = [{"lat": trajectory[0],
-#                     "lon": trajectory[1],
-#                     "alt": trajectory[3],
-#                     "date": trajectory[5],
-#                     "time": trajectory[6]}
-#                    for trajectory in trajectories]

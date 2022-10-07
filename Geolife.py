@@ -39,6 +39,7 @@ TABLES['trackpoint'] = (
 def main():
     print("Hello World!")
     db_connector = DbConnector()
+    print(db_connector)
     process_data = Process_data(db_connector)
 
     # Drop tables
@@ -51,6 +52,5 @@ def main():
 
     # Inserting data
     process_data.process()
-
 
 main()
