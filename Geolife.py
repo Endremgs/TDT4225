@@ -1,7 +1,6 @@
 
 from DbConnector import DbConnector
 from Process_data import Process_data
-from Process_data_new import Process_data_v2
 
 TABLES = {}
 TABLES['user'] = (
@@ -40,7 +39,8 @@ TABLES['trackpoint'] = (
 def main():
     print("Hello World!")
     db_connector = DbConnector()
-    process_data = Process_data_v2(db_connector)
+    print(db_connector)
+    process_data = Process_data(db_connector)
 
     # Drop tables
     for table_name in reversed(list(TABLES.keys())):
@@ -52,8 +52,5 @@ def main():
 
     # Inserting data
     process_data.process()
-
-    print("Activities: " + str(len(process_data.activities)))
-    print("Trackpoints: " + str(len(process_data.trackpoints)))
 
 main()
