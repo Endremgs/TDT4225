@@ -66,8 +66,10 @@ class Process_data:
                     new_item = dict(_id=int(self.trackpoint_id_counter),
                                     activity_id=int(self.activity_id_counter),
                                     # user_id=str(user_id),
-                                    lat=float(trackpoint[0]),
-                                    lon=float(trackpoint[1]),
+                                    location=dict(type="Point",
+                                                  coordinates=[float(trackpoint[1]), float(trackpoint[0])]),
+                                    # lat=float(trackpoint[0]),
+                                    # lon=float(trackpoint[1]),
                                     altitude=float(altitude),
                                     date_time=trackpoint_date_time)
                     self.trackpoint_id_counter += 1

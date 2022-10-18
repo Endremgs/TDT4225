@@ -1,4 +1,4 @@
-from pymongo import MongoClient, version
+from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 import time
@@ -80,3 +80,138 @@ class DbConnector:
             self.db["trackpoint"].insert_many(trackpoints)
         except Exception as e:
             print(e)
+
+    # 2
+
+    def find_average_activities_per_user(self):
+        return self.db["activity"].aggregate([
+            {
+                "$group": {
+                    "_id": "$user_id",
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "null",
+                    "avg": {"$avg": "$count"}
+                }
+            }
+        ])
+
+    # 3
+
+    def find_top_20_users_with_most_activities(self):
+        return self.db["activity"].aggregate([
+            {
+                "$group": {
+                    "_id": "$user_id",
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$sort": {"count": -1}
+            },
+            {
+                "$limit": 20
+            }
+        ])
+
+    # 4
+
+    def find_users_who_have_taken_taxi(self):
+        return self.db["activity"].aggregate([
+            {
+                "$match": {
+                    "transportation_mode": "taxi"
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$user_id"
+                }
+            }
+        ])
+
+    # 5
+
+    def find_all_types_of_transportation_modes(self):
+        return self.db["activity"].aggregate([
+            {
+                "$match": {
+                    "transportation_mode": {"$ne": False}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$transportation_mode",
+                    "count": {"$sum": 1}
+                }
+            }
+        ])
+
+    # 6 a
+
+    def find_year_with_most_activities(self):
+        return self.db["activity"].aggregate([
+            {
+                "$group": {
+                    "_id": {"$year": {"$dateFromString": {"dateString": "$start_date_time", "format": "%Y-%m-%d %H:%M:%S"}}},
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$sort": {"count": -1}
+            },
+            {
+                "$limit": 1
+            }
+        ])
+
+    # 6 b
+
+    # TODO Need to validate result. Hours seems a bit off
+    def find_year_with_most_recorded_hours(self):
+        return self.db["activity"].aggregate([
+            {
+                "$group": {
+                    "_id": {"$year": {"$dateFromString": {"dateString": "$start_date_time", "format": "%Y-%m-%d %H:%M:%S"}}},
+                    "count": {"$sum": {"$subtract": [{"$dateFromString": {"dateString": "$end_date_time", "format": "%Y-%m-%d %H:%M:%S"}},
+                                                     {"$dateFromString": {"dateString": "$start_date_time", "format": "%Y-%m-%d %H:%M:%S"}}]}}
+                }
+            },
+            {
+                "$sort": {"count": -1}
+            },
+            {
+                "$limit": 1
+            }
+        ])
+
+    # TODO 7 -
+
+    # Todo 8
+
+    # Todo - 9
+
+    # Todo - 10
+
+    # TODO - 11 Why is first (userID=10) not correct. Should be 'taxi', but is 'bus'
+
+    def find_all_users_who_have_registered_transportation_mode(self):
+        return self.db["activity"].aggregate([
+            {
+                "$match": {
+                    "transportation_mode": {"$ne": False}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$user_id",
+                    "transportation_mode": {"$first": "$transportation_mode"}
+                }
+            },
+            {
+                "$sort": {"_id": 1}
+            }
+        ])
