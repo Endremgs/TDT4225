@@ -188,11 +188,58 @@ class DbConnector:
             }
         ])
 
-    # TODO 7 -
+    # 7 
+
+    # Find all trackpoint of a given activity_id
+    def find_trackpoints_of_activity(self, activity_id):
+        return self.db["trackpoint"].find({"activity_id": activity_id})
+
+    # Find all activty ids where transportation mode is "walk" in 2008 for user with user_id "112"
+    def find_all_activity_ids_for_user_112_in_2008(self):
+        return self.db["activity"].aggregate([
+            {
+                "$match": {
+                    "user_id": "112",
+                    "transportation_mode": "walk",
+                    "start_date_time": {"$regex": "2008"}
+                }
+            },
+            {
+                "$project": {
+                    "activity_id": 1
+                }
+            }
+        ])
 
     # Todo 8
+    
+    # Return a list of all user_ids
+    def find_all_user_ids(self):
+        return self.db["user"].find({}, {"user_id": 1})
+
+    # Find all activity_ids of a given user_id
+    def find_all_activity_ids_of_user(self, user_id):
+        return self.db["activity"].aggregate([
+            {
+                "$match": {
+                    "user_id": user_id,
+                }
+            },
+            {
+                "$project": {
+                    "activity_id": 1
+                }
+            }])
+
+    # Find the altitude of each trackpoint of a given activity_id
+    def find_altitude_of_activity(self, activity_id):
+        return self.db["trackpoint"].find({"activity_id": activity_id}, {"altitude": 1})
 
     # Todo - 9
+
+    #  Find the all the date_time values of each trackpoint of a given activity_id
+    def find_date_time_of_activity(self, activity_id):
+        return self.db["trackpoint"].find({"activity_id": activity_id}, {"date_time": 1})
 
     # Todo - 10
 
