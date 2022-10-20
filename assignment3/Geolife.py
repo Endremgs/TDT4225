@@ -1,25 +1,30 @@
 from DbConnector import DbConnector
 from Process_data import Process_data
 import pprint as pp
-from haversine import haversine, Unit
+from haversine import haversine
 from datetime import datetime
 
 
 COLLECTIONS = ["user", "activity", "trackpoint"]
 
 
+def insert_data(db_connector):
+    # Instantiating fresh collections
+    for collection in COLLECTIONS:
+        db_connector.remove_collection(collection)
+        db_connector.create_collection(collection)
+    db_connector.create_indexes()
+
+    process_data = Process_data(db_connector)
+
+    # Inserting data
+    process_data.process()
+
+
 def main():
     db_connector = DbConnector()
 
-    #Instantiating fresh collections
-    # for collection in COLLECTIONS:
-    #    db_connector.remove_collection(collection)
-    #    db_connector.create_collection(collection)
-    # db_connector.create_indexes()
-    # process_data = Process_data(db_connector)
-
-    #Inserting data
-    # process_data.process()
+    # insert_data(db_connector)
 
     # Querying data
     # task2 = db_connector.find_average_activities_per_user()
@@ -54,28 +59,31 @@ def main():
         for i in activities:
             trackpoints = db_connector.find_trackpoints_of_activity(i["_id"])
             for tp in trackpoints:
-                if(old != (0, 0)):
-                    new = (tp["location"]["coordinates"][1], tp["location"]["coordinates"][0])
+                if (old != (0, 0)):
+                    new = (tp["location"]["coordinates"][1],
+                           tp["location"]["coordinates"][0])
                     distance += haversine(old, new)
                     old = new
                 else:
-                    old = (tp["location"]["coordinates"][1], tp["location"]["coordinates"][0])
-        print("TOTAL DISTANCE: ",distance)
-    #task7()
+                    old = (tp["location"]["coordinates"][1],
+                           tp["location"]["coordinates"][0])
+        print("TOTAL DISTANCE: ", distance)
+    # task7()
 
     # task8 = db_connector.find_top_20_users_who_have_gained_most_altitude_meters()
     # for i in task8:
     #     print(i)
 
-    # TASK 8 
+    # TASK 8
     # Find top 20 users with the most altitude gained
     def task8():
         print("Task 8")
-        
+
         user_ids = db_connector.find_all_user_ids()
         user_activity_ids = {}
         for user in user_ids:
-            activities = db_connector.find_all_activity_ids_of_user(user["_id"])
+            activities = db_connector.find_all_activity_ids_of_user(
+                user["_id"])
             activity_ids = []
             for a in activities:
                 activity_ids.append(a["_id"])
@@ -102,17 +110,19 @@ def main():
                 activity_alt_gained = 0
             #print(user, user_altitude[user])
 
-        sorted_user_altitudes = sorted(user_altitude.items(), key=lambda x: x[1], reverse=True)
+        sorted_user_altitudes = sorted(
+            user_altitude.items(), key=lambda x: x[1], reverse=True)
         for i in range(20):
             print(sorted_user_altitudes[i])
-    #task8()
+    # task8()
 
     # TASK 9
-    def task9():    
+    def task9():
         user_ids = db_connector.find_all_user_ids()
         user_activity_ids = {}
         for user in user_ids:
-            activities = db_connector.find_all_activity_ids_of_user(user["_id"])
+            activities = db_connector.find_all_activity_ids_of_user(
+                user["_id"])
             for a in activities:
                 prev_tp = "first"
                 for tp in db_connector.find_date_time_of_activity(a["_id"]):
@@ -124,20 +134,20 @@ def main():
                             break
                         prev_tp = tp
 
-    
-    #return the difference in seconds between two dates given with string format year-month-day hour:minute:second
+    # return the difference in seconds between two dates given with string format year-month-day hour:minute:second
+
     def check_if_invalid(date_time1, date_time2):
         date_time_obj1 = datetime.strptime(date_time1, '%Y-%m-%d %H:%M:%S')
         date_time_obj2 = datetime.strptime(date_time2, '%Y-%m-%d %H:%M:%S')
         diff = (date_time_obj2-date_time_obj1).total_seconds()
         return (diff > 300)
-    task9()
+    # task9()
     # task10 = db_connector.find_users_who_have_been_to_location()
     # for i in task10:
     #     print(i)
 
     #task11 = db_connector.find_all_users_who_have_registered_transportation_mode()
-    #for i in task11:
+    # for i in task11:
     #    print(i)
 
 

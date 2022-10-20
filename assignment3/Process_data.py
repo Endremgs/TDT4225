@@ -10,7 +10,6 @@ class Process_data:
         self.users = {}
         self.users_with_labels = []
         self.activities = []
-        self.trackpoints = []
         self.activity_id_counter = 1
         self.trackpoint_id_counter = 1
         self.db_connector = db_connector
@@ -51,11 +50,9 @@ class Process_data:
                                 " " + activity_trackpoints[-1][4]
                                 )
                 self.activities.append(activity)
-                # self.db_connector.insert_activity_with_id(activity)
 
                 trackpoints = []
                 for trackpoint in activity_trackpoints:
-                    trackpoint_date_days = float(trackpoint[3][-2])
                     trackpoint_date_time = trackpoint[3] + \
                         " " + trackpoint[4]
                     altitude = trackpoint[2]
@@ -65,16 +62,12 @@ class Process_data:
                         altitude = 0
                     new_item = dict(_id=int(self.trackpoint_id_counter),
                                     activity_id=int(self.activity_id_counter),
-                                    # user_id=str(user_id),
                                     location=dict(type="Point",
                                                   coordinates=[float(trackpoint[1]), float(trackpoint[0])]),
-                                    # lat=float(trackpoint[0]),
-                                    # lon=float(trackpoint[1]),
                                     altitude=float(altitude),
                                     date_time=trackpoint_date_time)
                     self.trackpoint_id_counter += 1
                     trackpoints.append(new_item)
-                #values = ', '.join(map(str, trackpoints))
                 self.db_connector.insert_trackpoints_with_id(trackpoints)
                 self.activity_id_counter += 1
 
@@ -115,10 +108,9 @@ class Process_data:
                 for line in labels:
                     label = line.split()
                     start = self.convert_timeformat(label[0] + " " + label[1])
-                    label_dict[start] = {}
                     end = self.convert_timeformat(label[2] + " " + label[3])
-                    input = {"end_time": end, "transportation_mode": label[4]}
-                    label_dict[start] = input
+                    label_dict[start] = {"end_time": end,
+                                         "transportation_mode": label[4]}
                     new_label = {
                         "start_time": start,
                         "end_time": end,
@@ -158,8 +150,13 @@ class Process_data:
                     dict(_id=user["_id"], has_labels=int(user["has_label"])))
 
         self.db_connector.batch_insert_users(user_list)
+        #shouldRead = False
         for user in self.users.values():
             try:
+                # if user["_id"] == "024":
+                #    shouldRead = True
+                # if shouldRead:
+                #    print(user)
                 print("reading user: " + user["_id"])
                 if (user["has_label"]):
                     self.read_labels(user["_id"])
