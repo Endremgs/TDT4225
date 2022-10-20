@@ -2,7 +2,7 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 import time
-
+import pymongo
 load_dotenv()
 
 
@@ -58,6 +58,7 @@ class DbConnector:
         self.db["activity"].create_index("transportation_mode")
         self.db["activity"].create_index("start_date_time")
         self.db["trackpoint"].create_index("activity_id")
+        self.db["trackpoint"].create_index([("location", pymongo.GEOSPHERE)])
 
     def batch_insert_users(self, user_list):
         print("inserting users...")
@@ -190,7 +191,7 @@ class DbConnector:
             }
         ])
 
-    # 7 
+    # 7
 
     # Find all trackpoint of a given activity_id
     def find_trackpoints_of_activity(self, activity_id):
@@ -214,7 +215,7 @@ class DbConnector:
         ])
 
     # Todo 8
-    
+
     # Return a list of all user_ids
     def find_all_user_ids(self):
         return self.db["user"].find({}, {"user_id": 1})
@@ -245,27 +246,39 @@ class DbConnector:
 
     # Todo - 10
 
-    # Find all users that has an activity with a trackpoint with location latitude 39.916 and longitude 116.397 using geonear
     def find_users_with_activity_with_trackpoint_at_location(self):
-        return self.db["user"].aggregate([
+        results = self.db["trackpoint"].aggregate([
             {
-                "$geoNear": {
-                    "near": {
-                        "type": "Point",
-                        "coordinates": [116.397, 39.916]
+                '$geoNear': {
+                    'near': {
+                        'type': 'Point',
+                        'coordinates': [
+                            116.397, 39.916
+                        ]
                     },
-                    "distanceField": "distance",
-                    "spherical": True,
-                    "query": {
-                        "trackpoint": {
-                            "$exists": True
-                        }
-                    }
+                    'distanceField': 'dist.calculated',
+                    'maxDistance': 100,
+                    'includeLocs': 'dist.location',
+                    'spherical': True
+                }
+            }])
+        activity_ids = []
+        for result in results:
+            activity_ids.append(result["activity_id"])
+
+        for user in self.db["activity"].aggregate([
+            {
+                "$match": {
+                    "_id": {"$in": activity_ids}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$user_id"
                 }
             }
-        ])
-
-
+        ]):
+            print(user)
 
     # TODO - 11 Why is first (userID=10) not correct. Should be 'taxi', but is 'bus'
 
