@@ -235,13 +235,35 @@ class DbConnector:
     def find_altitude_of_activity(self, activity_id):
         return self.db["trackpoint"].find({"activity_id": activity_id}, {"altitude": 1})
 
-    # Todo - 9
+    # 9
 
     #  Find the all the date_time values of each trackpoint of a given activity_id
     def find_date_time_of_activity(self, activity_id):
         return self.db["trackpoint"].find({"activity_id": activity_id}, {"date_time": 1})
 
     # Todo - 10
+
+    # Find all users that has an activity with a trackpoint with location latitude 39.916 and longitude 116.397 using geonear
+    def find_users_with_activity_with_trackpoint_at_location(self):
+        return self.db["user"].aggregate([
+            {
+                "$geoNear": {
+                    "near": {
+                        "type": "Point",
+                        "coordinates": [116.397, 39.916]
+                    },
+                    "distanceField": "distance",
+                    "spherical": True,
+                    "query": {
+                        "trackpoint": {
+                            "$exists": True
+                        }
+                    }
+                }
+            }
+        ])
+
+
 
     # TODO - 11 Why is first (userID=10) not correct. Should be 'taxi', but is 'bus'
 

@@ -110,31 +110,41 @@ def main():
     # TASK 9
     def task9():    
         user_ids = db_connector.find_all_user_ids()
-        user_activity_ids = {}
+        user_invalid_activities = {}
         for user in user_ids:
+            print("Finding invalid actitities for user: " + user["_id"])
             activities = db_connector.find_all_activity_ids_of_user(user["_id"])
+            user_invalid_activities[user["_id"]] = 0
             for a in activities:
                 prev_tp = "first"
                 for tp in db_connector.find_date_time_of_activity(a["_id"]):
                     if prev_tp == "first":
                         prev_tp = tp
                     else:
-                        if check_if_invalid(prev_tp["date_time"], tp["date_time"]):
-                            print("Invalid activity: ", a["_id"])
+                        if check_if_invalid(prev_tp["date_time"], tp["date_time"]) == True:
+                            user_invalid_activities[user["_id"]] += 1
                             break
                         prev_tp = tp
-
+        sorted_user_invalid_activities = sorted(user_invalid_activities.items(), key=lambda x: x[1], reverse=True)
+        print("User_id  | Invalid activities")
+        for key, count in sorted_user_invalid_activities:
+            print("{:8} | {:8}".format(key, count))
     
     #return the difference in seconds between two dates given with string format year-month-day hour:minute:second
     def check_if_invalid(date_time1, date_time2):
         date_time_obj1 = datetime.strptime(date_time1, '%Y-%m-%d %H:%M:%S')
         date_time_obj2 = datetime.strptime(date_time2, '%Y-%m-%d %H:%M:%S')
         diff = (date_time_obj2-date_time_obj1).total_seconds()
-        return (diff > 300)
-    task9()
-    # task10 = db_connector.find_users_who_have_been_to_location()
-    # for i in task10:
-    #     print(i)
+        #print("diff " + str(diff))
+        if diff >= 300:
+            return True
+        else:
+            return False
+    #task9()
+
+    task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
+    for i in task10:
+        print(i)
 
     #task11 = db_connector.find_all_users_who_have_registered_transportation_mode()
     #for i in task11:
