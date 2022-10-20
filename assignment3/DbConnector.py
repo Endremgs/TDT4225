@@ -62,8 +62,11 @@ class DbConnector:
     def batch_insert_users(self, user_list):
         print("inserting users...")
         start_time = time.time()
-        self.db["user"].insert_many(user_list)
-        print("finished insert in %s seconds" % (time.time() - start_time))
+        try:
+            self.db["user"].insert_many(user_list)
+            print("finished insert in %s seconds" % (time.time() - start_time))
+        except Exception as e:
+            print(e)
 
     def batch_insert_activities_with_id(self, activities):
         print("inserting activities...")
@@ -75,7 +78,6 @@ class DbConnector:
             print(e)
 
     def insert_trackpoints_with_id(self, trackpoints):
-        # print(trackpoints)
         try:
             self.db["trackpoint"].insert_many(trackpoints)
         except Exception as e:
