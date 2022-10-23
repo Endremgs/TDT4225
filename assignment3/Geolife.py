@@ -28,28 +28,28 @@ def main():
 
     # Querying data
     # task2 = db_connector.find_average_activities_per_user()
-    # for i in task2:
-    #     print(i)
+    # print("Average activities per user: %s" % list(task2)[0]["avg"])
 
     # task3 = db_connector.find_top_20_users_with_most_activities()
-    # for i in task3:
-    #     print(i)
+    # print("User_id  | Activity count")
+    # for user in list(task3):
+    #     print("{:8} | {:8}".format(user["_id"], user["count"]))
 
     # task4 = db_connector.find_users_who_have_taken_taxi()
+    # print("Users who have taken a taxi:")
     # for i in task4:
-    #     print(i)
+    #     print(i["_id"])
 
     # task5 = db_connector.find_all_types_of_transportation_modes()
+    # print("Transportation mode | Count")
     # for i in task5:
-    #     print(i)
+    #     print("{:19} | {:8}".format(i["_id"], i["count"]))
 
     # task6a = db_connector.find_year_with_most_activities()
-    # for i in task6a:
-    #     print(i)
+    # print("Year with most activities: %s" % list(task6a)[0]["_id"])
 
     # task6b = db_connector.find_year_with_most_recorded_hours()
-    # for i in task6b:
-    #     print(i)
+    # print("Year with most recorded hours: %s" % list(task6b)[0]["_id"])
 
     def task7():
         activities = db_connector.find_all_activity_ids_for_user_112_in_2008()
@@ -75,7 +75,6 @@ def main():
     #     print(i)
 
     # TASK 8
-    # Find top 20 users with the most altitude gained
     def task8():
         print("Task 8")
 
@@ -108,13 +107,13 @@ def main():
                     old_alt = new_alt
                 user_altitude[user] += activity_alt_gained*0.3048
                 activity_alt_gained = 0
-            #print(user, user_altitude[user])
-
+                
         sorted_user_altitudes = sorted(
             user_altitude.items(), key=lambda x: x[1], reverse=True)
-        for i in range(20):
-            print(sorted_user_altitudes[i])
-    # task8()
+        print("User_id  | Altitude gained")
+        for key, altitude in sorted_user_altitudes:
+            print("{:8} | {:8}".format(key, round(altitude)))
+    #task8()
 
     # TASK 9
     def task9():
@@ -151,9 +150,11 @@ def main():
             return True
         else:
             return False
-    # task9()
+    #task9()
 
-    #task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
+    # task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
+    # for i in task10:
+    #     print(i)
 
     task11 = db_connector.find_most_frequent_transportation_mode_for_each_user()
     for i in task11:
