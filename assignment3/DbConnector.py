@@ -286,20 +286,30 @@ class DbConnector:
 
     # TODO - 11 Why is first (userID=10) not correct. Should be 'taxi', but is 'bus'
 
-    def find_all_users_who_have_registered_transportation_mode(self):
+    # Find the most frequently used transportation mode for each user, and the number of times it was used. Ignore transportation mode that is equal None.
+    def find_most_frequent_transportation_mode_for_each_user(self):
         return self.db["activity"].aggregate([
             {
                 "$match": {
-                    "transportation_mode": {"$ne": False}
+                    "transportation_mode": {"$ne": None}
                 }
             },
             {
                 "$group": {
-                    "_id": "$user_id",
-                    "transportation_mode": {"$first": "$transportation_mode"}
+                    "_id": {"user_id": "$user_id", "transportation_mode": "$transportation_mode"},
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$sort": {"count": -1}
+            },
+            {
+                "$group": {
+                    "_id": "$_id.user_id",
+                    "transportation_mode": {"$first": "$_id.transportation_mode"}
                 }
             },
             {
                 "$sort": {"_id": 1}
-            }
+            },
         ])

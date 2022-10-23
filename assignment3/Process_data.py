@@ -39,7 +39,7 @@ class Process_data:
                 path = user["path"] + "/" + filename
                 activity_trackpoints = np.genfromtxt(
                     path, skip_header=6, delimiter=',', dtype=str, usecols=(0, 1, 3, 5, 6))
-                if (len(activity_trackpoints) >= 2500):
+                if (len(activity_trackpoints) > 2500):
                     continue
                 res = self.match_label(activity_trackpoints, user)
                 activity = dict(_id=int(self.activity_id_counter),
@@ -98,7 +98,7 @@ class Process_data:
                     print("Found match " +
                           labels[starttime]["transportation_mode"])
                     return labels[starttime]["transportation_mode"]
-        return False
+        return None
 
     # Read labels, return labels as a dictionary
     def read_labels(self, user_id):

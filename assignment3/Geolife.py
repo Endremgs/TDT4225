@@ -68,7 +68,7 @@ def main():
                     old = (tp["location"]["coordinates"][1],
                            tp["location"]["coordinates"][0])
         print("TOTAL DISTANCE: ", distance)
-    task7()
+    #task7()
 
     # task8 = db_connector.find_top_20_users_who_have_gained_most_altitude_meters()
     # for i in task8:
@@ -155,9 +155,9 @@ def main():
 
     #task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
 
-    #task11 = db_connector.find_all_users_who_have_registered_transportation_mode()
-    # for i in task11:
-    #    print(i)
+    task11 = db_connector.find_most_frequent_transportation_mode_for_each_user()
+    for i in task11:
+       print(i)
 
 
 main()
