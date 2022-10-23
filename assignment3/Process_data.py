@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import time
+import datetime as dt
 BASE_PATH = "./dataset"
 
 
@@ -44,10 +45,10 @@ class Process_data:
                 activity = dict(_id=int(self.activity_id_counter),
                                 user_id=str(user_id),
                                 transportation_mode=res,
-                                start_date_time=activity_trackpoints[0][3] +
-                                " " + activity_trackpoints[0][4],
-                                end_date_time=activity_trackpoints[-1][3] +
-                                " " + activity_trackpoints[-1][4]
+                                start_date_time=self.string_to_datetime(activity_trackpoints[0][3] +
+                                " " + activity_trackpoints[0][4]),
+                                end_date_time=self.string_to_datetime(activity_trackpoints[-1][3] +
+                                " " + activity_trackpoints[-1][4])
                                 )
                 self.activities.append(activity)
 
@@ -60,14 +61,15 @@ class Process_data:
                     # Fixing invalid altitudes
                     if altitude == -777:
                         altitude = 0
-                    new_item = dict(_id=int(self.trackpoint_id_counter),
-                                    activity_id=int(self.activity_id_counter),
-                                    location=dict(type="Point",
-                                                  coordinates=[float(trackpoint[1]), float(trackpoint[0])]),
-                                    altitude=float(altitude),
-                                    date_time=trackpoint_date_time)
+                    formatted_trackpoint = dict(_id=int(self.trackpoint_id_counter),
+                                                activity_id=int(
+                                                    self.activity_id_counter),
+                                                location=dict(type="Point",
+                                                              coordinates=[float(trackpoint[1]), float(trackpoint[0])]),
+                                                altitude=int(float(altitude)),
+                                                date_time=self.string_to_datetime(trackpoint_date_time))
                     self.trackpoint_id_counter += 1
-                    trackpoints.append(new_item)
+                    trackpoints.append(formatted_trackpoint)
                 self.db_connector.insert_trackpoints_with_id(trackpoints)
                 self.activity_id_counter += 1
 
@@ -122,6 +124,9 @@ class Process_data:
 
     def convert_timeformat(self, date):
         return date.replace("/", "-")
+
+    def string_to_datetime(self, date_string):
+        return dt.datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
 
     def user_has_label(self, userID):
         if len(self.users_with_labels) == 0:

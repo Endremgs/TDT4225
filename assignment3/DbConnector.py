@@ -1,8 +1,10 @@
+import datetime
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 import time
 import pymongo
+import haversine
 load_dotenv()
 
 
@@ -159,7 +161,7 @@ class DbConnector:
         return self.db["activity"].aggregate([
             {
                 "$group": {
-                    "_id": {"$year": {"$dateFromString": {"dateString": "$start_date_time", "format": "%Y-%m-%d %H:%M:%S"}}},
+                    "_id": {"$year": "$start_date_time"},
                     "count": {"$sum": 1}
                 }
             },
@@ -178,9 +180,9 @@ class DbConnector:
         return self.db["activity"].aggregate([
             {
                 "$group": {
-                    "_id": {"$year": {"$dateFromString": {"dateString": "$start_date_time", "format": "%Y-%m-%d %H:%M:%S"}}},
-                    "count": {"$sum": {"$subtract": [{"$dateFromString": {"dateString": "$end_date_time", "format": "%Y-%m-%d %H:%M:%S"}},
-                                                     {"$dateFromString": {"dateString": "$start_date_time", "format": "%Y-%m-%d %H:%M:%S"}}]}}
+                    "_id": {"$year": "$start_date_time"},
+                    "count": {"$sum": {"$subtract": ["$end_date_time",
+                                                     "$start_date_time"]}}
                 }
             },
             {
@@ -192,7 +194,6 @@ class DbConnector:
         ])
 
     # 7
-
     # Find all trackpoint of a given activity_id
     def find_trackpoints_of_activity(self, activity_id):
         return self.db["trackpoint"].find({"activity_id": activity_id})
@@ -204,7 +205,9 @@ class DbConnector:
                 "$match": {
                     "user_id": "112",
                     "transportation_mode": "walk",
-                    "start_date_time": {"$regex": "2008"}
+                    # "start_date_time": {"$regex": "2008"}
+                    "start_date_time": {"$gte": datetime(2008, 1, 1)},
+                    "end_date_time": {"$lt": datetime(2009, 1, 1)}
                 }
             },
             {
@@ -217,6 +220,7 @@ class DbConnector:
     # Todo 8
 
     # Return a list of all user_ids
+
     def find_all_user_ids(self):
         return self.db["user"].find({}, {"user_id": 1})
 

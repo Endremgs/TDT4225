@@ -24,7 +24,7 @@ def insert_data(db_connector):
 def main():
     db_connector = DbConnector()
 
-    insert_data(db_connector)
+    # insert_data(db_connector)
 
     # Querying data
     # task2 = db_connector.find_average_activities_per_user()
@@ -68,7 +68,7 @@ def main():
                     old = (tp["location"]["coordinates"][1],
                            tp["location"]["coordinates"][0])
         print("TOTAL DISTANCE: ", distance)
-    # task7()
+    task7()
 
     # task8 = db_connector.find_top_20_users_who_have_gained_most_altitude_meters()
     # for i in task8:
@@ -153,7 +153,7 @@ def main():
             return False
     # task9()
 
-    task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
+    #task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
 
     #task11 = db_connector.find_all_users_who_have_registered_transportation_mode()
     # for i in task11:
