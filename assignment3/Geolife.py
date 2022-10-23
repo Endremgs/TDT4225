@@ -20,62 +20,69 @@ def insert_data(db_connector):
     # Inserting data
     process_data.process()
 
+def check_if_invalid(date_time1, date_time2):
+    diff = (date_time2-date_time1).total_seconds()
+    if diff >= 300:
+        return True
+    else:
+        return False
 
 def main():
     db_connector = DbConnector()
 
+    ## Uncomment when running first time
     # insert_data(db_connector)
 
     # Querying data
-    # task2 = db_connector.find_average_activities_per_user()
-    # print("Average activities per user: %s" % list(task2)[0]["avg"])
+    def task_2():
+        task2 = db_connector.find_average_activities_per_user()
+        print("Average activities per user: %s" % list(task2)[0]["avg"])
 
-    # task3 = db_connector.find_top_20_users_with_most_activities()
-    # print("User_id  | Activity count")
-    # for user in list(task3):
-    #     print("{:8} | {:8}".format(user["_id"], user["count"]))
+    def task_3():
+        task3 = db_connector.find_top_20_users_with_most_activities()
+        print("User_id  | Activity count")
+        for user in list(task3):
+            print("{:8} | {:8}".format(user["_id"], user["count"]))
 
-    # task4 = db_connector.find_users_who_have_taken_taxi()
-    # print("Users who have taken a taxi:")
-    # for i in task4:
-    #     print(i["_id"])
+    def task_4():
+        task4 = db_connector.find_users_who_have_taken_taxi()
+        print("Users who have taken a taxi:")
+        for i in task4:
+            print(i["_id"])
 
-    # task5 = db_connector.find_all_types_of_transportation_modes()
-    # print("Transportation mode | Count")
-    # for i in task5:
-    #     print("{:19} | {:8}".format(i["_id"], i["count"]))
+    def task_5():
+        task5 = db_connector.find_all_types_of_transportation_modes()
+        print("Transportation mode | Count")
+        for i in task5:
+            print("{:19} | {:8}".format(i["_id"], i["count"]))
 
-    # task6a = db_connector.find_year_with_most_activities()
-    # print("Year with most activities: %s" % list(task6a)[0]["_id"])
+    def task_6a():
+        task6a = db_connector.find_year_with_most_activities()
+        print("Year with most activities: %s" % list(task6a)[0]["_id"])
 
-    # task6b = db_connector.find_year_with_most_recorded_hours()
-    # print("Year with most recorded hours: %s" % list(task6b)[0]["_id"])
+    def task_6b():
+        task6b = db_connector.find_year_with_most_recorded_hours()
+        print("Year with most recorded hours: %s" % list(task6b)[0]["_id"])
 
-    def task7():
-        activities = db_connector.find_all_activity_ids_for_user_112_in_2008()
-
+    def task_7():
+        activities = db_connector.find_activity_ids()
         distance = 0
-        old = (0, 0)
+        is_first = True
         for i in activities:
             trackpoints = db_connector.find_trackpoints_of_activity(i["_id"])
             for tp in trackpoints:
-                if (old != (0, 0)):
+                if is_first:
+                    old = (tp["location"]["coordinates"][1],
+                           tp["location"]["coordinates"][0])
+                    is_first = False
+                else:
                     new = (tp["location"]["coordinates"][1],
                            tp["location"]["coordinates"][0])
                     distance += haversine(old, new)
                     old = new
-                else:
-                    old = (tp["location"]["coordinates"][1],
-                           tp["location"]["coordinates"][0])
         print("TOTAL DISTANCE: ", distance)
-    #task7()
 
-    # task8 = db_connector.find_top_20_users_who_have_gained_most_altitude_meters()
-    # for i in task8:
-    #     print(i)
-
-    # TASK 8
-    def task8():
+    def task_8():
         print("Task 8")
 
         user_ids = db_connector.find_all_user_ids()
@@ -111,12 +118,14 @@ def main():
         sorted_user_altitudes = sorted(
             user_altitude.items(), key=lambda x: x[1], reverse=True)
         print("User_id  | Altitude gained")
+        count = 1
         for key, altitude in sorted_user_altitudes:
+            if count > 20:
+                break
+            count += 1
             print("{:8} | {:8}".format(key, round(altitude)))
-    #task8()
 
-    # TASK 9
-    def task9():
+    def task_9():
         user_ids = db_connector.find_all_user_ids()
         user_invalid_activities = {}
         for user in user_ids:
@@ -138,27 +147,31 @@ def main():
             user_invalid_activities.items(), key=lambda x: x[1], reverse=True)
         print("User_id  | Invalid activities")
         for key, count in sorted_user_invalid_activities:
-            print("{:8} | {:8}".format(key, count))
+            if count != 0:
+                print("{:8} | {:8}".format(key, count))
 
-    # return the difference in seconds between two dates given with string format year-month-day hour:minute:second
-    def check_if_invalid(date_time1, date_time2):
-        date_time_obj1 = datetime.strptime(date_time1, '%Y-%m-%d %H:%M:%S')
-        date_time_obj2 = datetime.strptime(date_time2, '%Y-%m-%d %H:%M:%S')
-        diff = (date_time_obj2-date_time_obj1).total_seconds()
-        #print("diff " + str(diff))
-        if diff >= 300:
-            return True
-        else:
-            return False
-    #task9()
+    def task_10():
+        task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
+        print("Users that have been to the Forbidden City of Beijing.")
+        for i in task10:
+            print(i["_id"])
 
-    # task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
-    # for i in task10:
-    #     print(i)
+    def task_11():
+        task11 = db_connector.find_most_frequent_transportation_mode_for_each_user()
+        print("User_id | Transportation mode")
+        for i in task11:
+            print("{:7} | {:19}".format(i["_id"], i["transportation_mode"]))
 
-    task11 = db_connector.find_most_frequent_transportation_mode_for_each_user()
-    for i in task11:
-       print(i)
-
-
+    # Uncomment to run task
+    #task_2()
+    #task_3()
+    #task_4()
+    #task_5()
+    #task_6a()
+    #task_6b()
+    #task_7()
+    #task_8()
+    #task_9()
+    #task_10()
+    #task_11()
 main()

@@ -61,6 +61,10 @@ class DbConnector:
         self.db["activity"].create_index("start_date_time")
         self.db["trackpoint"].create_index("activity_id")
         self.db["trackpoint"].create_index([("location", pymongo.GEOSPHERE)])
+    
+    ############################################################
+    ###################### Inserts #############################
+    ############################################################
 
     def batch_insert_users(self, user_list):
         print("inserting users...")
@@ -86,8 +90,12 @@ class DbConnector:
         except Exception as e:
             print(e)
 
-    # 2
 
+    ############################################################
+    ###################### Queries #############################
+    ############################################################
+
+    ## TASK 2 ##
     def find_average_activities_per_user(self):
         return self.db["activity"].aggregate([
             {
@@ -104,8 +112,8 @@ class DbConnector:
             }
         ])
 
-    # 3
 
+    ## TASK 3 ##
     def find_top_20_users_with_most_activities(self):
         return self.db["activity"].aggregate([
             {
@@ -122,8 +130,8 @@ class DbConnector:
             }
         ])
 
-    # 4
 
+    ## TASK 4 ##
     def find_users_who_have_taken_taxi(self):
         return self.db["activity"].aggregate([
             {
@@ -138,13 +146,13 @@ class DbConnector:
             }
         ])
 
-    # 5
 
+    ## TASK 5 ##
     def find_all_types_of_transportation_modes(self):
         return self.db["activity"].aggregate([
             {
                 "$match": {
-                    "transportation_mode": {"$ne": False}
+                    "transportation_mode": {"$ne": None}
                 }
             },
             {
@@ -155,8 +163,8 @@ class DbConnector:
             }
         ])
 
-    # 6 a
 
+    ## TASK 6 a ##
     def find_year_with_most_activities(self):
         return self.db["activity"].aggregate([
             {
@@ -173,9 +181,8 @@ class DbConnector:
             }
         ])
 
-    # 6 b
 
-    # TODO Need to validate result. Hours seems a bit off
+    ## TASK 6 b ##
     def find_year_with_most_recorded_hours(self):
         return self.db["activity"].aggregate([
             {
@@ -193,38 +200,23 @@ class DbConnector:
             }
         ])
 
-    # 7
-    # Find all trackpoint of a given activity_id
+
+    ## TASK 7 ##
     def find_trackpoints_of_activity(self, activity_id):
         return self.db["trackpoint"].find({"activity_id": activity_id})
 
-    # Find all activty ids where transportation mode is "walk" in 2008 for user with user_id "112"
-    def find_all_activity_ids_for_user_112_in_2008(self):
-        return self.db["activity"].aggregate([
-            {
-                "$match": {
-                    "user_id": "112",
-                    "transportation_mode": "walk",
-                    # "start_date_time": {"$regex": "2008"}
-                    "start_date_time": {"$gte": datetime(2008, 1, 1)},
-                    "end_date_time": {"$lt": datetime(2009, 1, 1)}
-                }
-            },
-            {
-                "$project": {
-                    "activity_id": 1
-                }
-            }
-        ])
+    def find_activity_ids(self):
+        return self.db["activity"].find({
+            "user_id": "112",
+            "start_date_time": {"$gte": datetime.datetime(2008, 1, 1, 0, 0, 0)},
+            "transportation_mode": "walk"
+        })
 
-    # Todo 8
 
-    # Return a list of all user_ids
-
+    ## TASK 8 ##
     def find_all_user_ids(self):
         return self.db["user"].find({}, {"user_id": 1})
 
-    # Find all activity_ids of a given user_id
     def find_all_activity_ids_of_user(self, user_id):
         return self.db["activity"].aggregate([
             {
@@ -238,18 +230,16 @@ class DbConnector:
                 }
             }])
 
-    # Find the altitude of each trackpoint of a given activity_id
     def find_altitude_of_activity(self, activity_id):
         return self.db["trackpoint"].find({"activity_id": activity_id}, {"altitude": 1})
 
-    # 9
 
-    #  Find the all the date_time values of each trackpoint of a given activity_id
+    ## TASK 9 ##
     def find_date_time_of_activity(self, activity_id):
         return self.db["trackpoint"].find({"activity_id": activity_id}, {"date_time": 1})
 
-    # Todo - 10
 
+    ## TASK 10 ##
     def find_users_with_activity_with_trackpoint_at_location(self):
         results = self.db["trackpoint"].aggregate([
             {
@@ -267,6 +257,7 @@ class DbConnector:
                 }
             }])
         activity_ids = []
+        users = []
         for result in results:
             activity_ids.append(result["activity_id"])
 
@@ -282,11 +273,11 @@ class DbConnector:
                 }
             }
         ]):
-            print(user)
+            users.append(user)
+        return users
 
-    # TODO - 11 Why is first (userID=10) not correct. Should be 'taxi', but is 'bus'
 
-    # Find the most frequently used transportation mode for each user, and the number of times it was used. Ignore transportation mode that is equal None.
+    ## TASK 11 ##
     def find_most_frequent_transportation_mode_for_each_user(self):
         return self.db["activity"].aggregate([
             {
