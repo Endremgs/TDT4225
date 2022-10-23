@@ -31,7 +31,7 @@ def main():
     db_connector = DbConnector()
 
     ## Uncomment when running first time
-    # insert_data(db_connector)
+    insert_data(db_connector)
 
     # Querying data
     def task_2():
@@ -67,8 +67,8 @@ def main():
     def task_7():
         activities = db_connector.find_activity_ids()
         distance = 0
-        is_first = True
         for i in activities:
+            is_first = True
             trackpoints = db_connector.find_trackpoints_of_activity(i["_id"])
             for tp in trackpoints:
                 if is_first:
@@ -170,7 +170,7 @@ def main():
     #task_6a()
     #task_6b()
     #task_7()
-    #task_8()
+    task_8()
     #task_9()
     #task_10()
     #task_11()

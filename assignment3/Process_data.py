@@ -58,9 +58,6 @@ class Process_data:
                         " " + trackpoint[4]
                     altitude = trackpoint[2]
 
-                    # Fixing invalid altitudes
-                    if altitude == -777:
-                        altitude = 0
                     formatted_trackpoint = dict(_id=int(self.trackpoint_id_counter),
                                                 activity_id=int(
                                                     self.activity_id_counter),
