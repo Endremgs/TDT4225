@@ -70,6 +70,10 @@ def main():
         print("TOTAL DISTANCE: ", distance)
     #task7()
 
+    # task8 = db_connector.find_top_20_users_who_have_gained_most_altitude_meters()
+    # for i in task8:
+    #     print(i)
+
     # TASK 8
     def task8():
         print("Task 8")
@@ -117,7 +121,8 @@ def main():
         user_invalid_activities = {}
         for user in user_ids:
             print("Finding invalid actitities for user: " + user["_id"])
-            activities = db_connector.find_all_activity_ids_of_user(user["_id"])
+            activities = db_connector.find_all_activity_ids_of_user(
+                user["_id"])
             user_invalid_activities[user["_id"]] = 0
             for a in activities:
                 prev_tp = "first"
@@ -129,12 +134,13 @@ def main():
                             user_invalid_activities[user["_id"]] += 1
                             break
                         prev_tp = tp
-        sorted_user_invalid_activities = sorted(user_invalid_activities.items(), key=lambda x: x[1], reverse=True)
+        sorted_user_invalid_activities = sorted(
+            user_invalid_activities.items(), key=lambda x: x[1], reverse=True)
         print("User_id  | Invalid activities")
         for key, count in sorted_user_invalid_activities:
             print("{:8} | {:8}".format(key, count))
-    
-    #return the difference in seconds between two dates given with string format year-month-day hour:minute:second
+
+    # return the difference in seconds between two dates given with string format year-month-day hour:minute:second
     def check_if_invalid(date_time1, date_time2):
         date_time_obj1 = datetime.strptime(date_time1, '%Y-%m-%d %H:%M:%S')
         date_time_obj2 = datetime.strptime(date_time2, '%Y-%m-%d %H:%M:%S')
@@ -144,7 +150,7 @@ def main():
             return True
         else:
             return False
-    task9()
+    #task9()
 
     # task10 = db_connector.find_users_with_activity_with_trackpoint_at_location()
     # for i in task10:
